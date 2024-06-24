@@ -1,4 +1,4 @@
-######### Shiny Dashboard
+####### Shiny Dashboard
 ## Load Packages ---------------------------------------------------------------
 library(shiny)
 library(readr)
@@ -8,7 +8,6 @@ library(dplyr)
 library(tidyverse)
 library(shinydashboard)
 library(shinyjs)
-##
 
 
 # Load Data -------------------------------------------------------------------

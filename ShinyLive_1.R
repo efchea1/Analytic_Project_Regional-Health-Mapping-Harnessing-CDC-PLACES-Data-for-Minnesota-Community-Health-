@@ -13,7 +13,7 @@ library(shinylive)
 
 # Building a serverless shiny app for the Analytics_project
 shinylive::export(
-  appdir = "app",
+  appdir = "application",
   destdir = "docs"
 )
 
