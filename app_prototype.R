@@ -9,30 +9,31 @@ library(shinyjs)          # shinyjs package for adding JavaScript functionality
 library(plotly)           # plotly package for creating interactive plots
 
 # Load Data -------------------------------------------------------------------
-# Minnesota CDC Places Census Estimate data for 2020 to 2022
+# Load Minnesota CDC Places Census Estimate data for 2020 to 2022 from a CSV file available online
 CensusEstMN <- read.csv(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv'
-) # Load census data from a CSV file available online
+)
 
-# Minnesota Coronary Heart Disease (CHD) data 2018 to 2021
+# List of URLs for CHD data files from 2018 to 2021
 CHD_files <- list(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2018.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2019.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2020.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2021.csv'
-) # List of URLs for CHD data files from 2018 to 2021
+)
 
-CHD_data <- lapply(CHD_files, read.csv) # Read each CHD data file into a list of data frames
+# Read each CHD data file into a list of data frames
+CHD_data <- lapply(CHD_files, read.csv)
 
-# CHB, County
+# Load Community Health Board (CHB) data from a CSV file
 chb_raw <- read.csv(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv'
-) # Load Community Health Board (CHB) data from a CSV file
+)
 
-# MN Region
+# Load Minnesota region data from a CSV file
 mn_region_raw <- read.csv(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv'
-) # Load Minnesota region data from a CSV file
+)
 
 # Data Wrangling --------------------------------------------------------------
 # Clean and merge CHD data
@@ -40,11 +41,12 @@ CHD_data <- lapply(CHD_data, function(df) {
   df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA) # Add LocationID if Latitude column exists
   colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation' # Correct spelling of Geolocation column if needed
   df
-}) # Clean each data frame in the CHD data list
+})
 
-CHD_Final <- bind_rows(CHD_data) # Combine all cleaned CHD data frames into one data frame
+# Combine all cleaned CHD data frames into one data frame
+CHD_Final <- bind_rows(CHD_data)
 
-# Filter and select locations
+# Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |> 
   filter(LocationName %in% c("Aitkin", "Anoka", "Becker", "Beltrami", "Benton", "Big Stone", "Blue Earth", "Brown", "Carlton", "Carver",
                              "Cass", "Chippewa", "Chisago", "Clay", "Clearwater", "Cook", "Cottonwood", "Crow Wing", "Dakota", "Dodge", "Douglas",
@@ -55,10 +57,10 @@ Selected_Locations <- CHD_Final |>
                              "Red Lake", "Redwood", "Renville", "Rice", "Rock", "Roseau", "Scott", "Sherburne", "Sibley", "St. Louis", "Stearns",
                              "Steele", "Stevens", "Swift", "Todd", "Traverse", "Wabasha", "Wadena", "Waseca", "Washington", "Watonwan",
                              "Wilkin", "Winona", "Wright", "Yellow Medicine"),
-         Year == 2021, StateAbbr == "MN") # Filter CHD data for selected locations and year 2021 in MN
+         Year == 2021, StateAbbr == "MN")
 
-# Clean census data
-CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Remove " County" from county names in census data
+# Remove " County" from county names in census data
+CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
 
 # Population estimates for CHD in MN
 PopEst_CHDMN <- CensusEstMN |> 
@@ -66,20 +68,24 @@ PopEst_CHDMN <- CensusEstMN |>
   inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Join census data with selected CHD locations
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit) # Select relevant columns
 
-# Calculate crude and age-adjusted values
+# Function to calculate aggregate values
 calc_aggregate_values <- function(df) {
   df |> 
-    mutate(Aggregate_Data_Value = Data_Value * AGE18PLUS_TOT / 100,
-           Aggregate_Low_Confidence_Limit = Low_Confidence_Limit * AGE18PLUS_TOT / 100,
-           Aggregate_High_Confidence_Limit = High_Confidence_Limit * AGE18PLUS_TOT / 100) |> # Calculate aggregate values
+    mutate(Aggregate_Data_Value = Data_Value * AGE18PLUS_TOT / 100, # Calculate aggregate data value
+           Aggregate_Low_Confidence_Limit = Low_Confidence_Limit * AGE18PLUS_TOT / 100, # Calculate aggregate low confidence limit
+           Aggregate_High_Confidence_Limit = High_Confidence_Limit * AGE18PLUS_TOT / 100) |> # Calculate aggregate high confidence limit
     select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Aggregate_High_Confidence_Limit,
-           Aggregate_Data_Value, Aggregate_Low_Confidence_Limit) # Select relevant columns
+           Aggregate_Data_Value, Aggregate_Low_Confidence_Limit) # Select is used to Select relevant columns
 }
 
-CHD_Crude21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == 'Crude prevalence')) # Calculate crude values
-CHD_Adj21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == 'Age-adjusted prevalence')) # Calculate age-adjusted values
-CHD_MN21 <- bind_rows(CHD_Adj21MN, CHD_Crude21MN) # Combine crude and age-adjusted values
+# Calculate crude values
+CHD_Crude21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == 'Crude prevalence'))
+# Calculate age-adjusted values
+CHD_Adj21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == 'Age-adjusted prevalence'))
+# Combine crude and age-adjusted values
+CHD_MN21 <- bind_rows(CHD_Adj21MN, CHD_Crude21MN)
 
+# App user interface ----------------------------------
 # Define UI -------------------------------------------------------------------
 ui <- dashboardPage(
   dashboardHeader(
@@ -121,8 +127,8 @@ ui <- dashboardPage(
                 does not show in an easy format aggregate county regions. By doing this project, I am not only going to help
                 Quin County CHS, but other county regions in the state of MN or even the US."),
                 tags$h3("Those involved with this project are:"),
-                tags$h4("Emmanuel Fle Chea, MPH, Public Health Data Science, University of Minnesota School of Public Health"),
-                tags$h4("Mr. Patrick Olson (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher")
+                tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # tags$b() bold the texts in the parentheses
+                tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher") # tags$b() bold the texts in the parentheses
               ) # Home page content with welcome message and project details
             )
           )
@@ -177,7 +183,7 @@ ui <- dashboardPage(
               column(
                 width = 12,
                 selectInput(
-                  "parLocal_leadYear",
+                  "parLocal_chdYear",
                   label = "Select Year",
                   choices = sort(unique(Selected_Locations$Year), decreasing = TRUE),
                   selected = max(unique(Selected_Locations$Year))
