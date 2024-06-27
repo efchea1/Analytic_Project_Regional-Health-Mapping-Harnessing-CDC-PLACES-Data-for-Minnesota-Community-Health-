@@ -85,7 +85,7 @@ CHD_Adj21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == '
 # Combine crude and age-adjusted values
 CHD_MN21 <- bind_rows(CHD_Adj21MN, CHD_Crude21MN)
 
-# App user interface ----------------------------------
+# App user interface ------------------------------------------
 # Define UI -------------------------------------------------------------------
 ui <- dashboardPage(
   dashboardHeader(
