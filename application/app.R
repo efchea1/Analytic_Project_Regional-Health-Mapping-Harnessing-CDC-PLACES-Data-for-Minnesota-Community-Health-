@@ -1,19 +1,18 @@
-####### Shiny Dashboard
+# Shiny Dashboard
+
 ## Load Packages ---------------------------------------------------------------
 library(shiny)
 library(readr)
 library(ggplot2)
-library(kableExtra)
 library(dplyr)
-library(tidyverse)
 library(shinydashboard)
 library(shinyjs)
-
+library(plotly)
 
 # Load Data -------------------------------------------------------------------
 # Minnesota CDC Places Census Estimate data for 2020 to 2022
 CensusEstMN <- read.csv(
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv',
+  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv'
 )
 
 # Minnesota Coronary Heart Disease (CHD) data 2018 to 2021
@@ -28,29 +27,25 @@ CHD_data <- lapply(CHD_files, read.csv)
 
 # CHB, County
 chb_raw <- read.csv(
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv',
+  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv'
 )
 
 # MN Region
 mn_region_raw <- read.csv(
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv',
+  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv'
 )
-
 
 # Data Wrangling --------------------------------------------------------------
 # Clean and merge CHD data
-CHD_data[[1]]$Latitude <- "NA"
-colnames(CHD_data[[1]])[colnames(CHD_data[[1]]) == 'Latitude'] <- 'LocationID'
-colnames(CHD_data[[1]])[colnames(CHD_data[[1]]) == 'Geolocatioin'] <- 'Geolocation'
 CHD_data <- lapply(CHD_data, function(df) {
-  df$LocationID <- as.character(df$LocationID)
-  return(df)
+  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA)
+  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation'
+  df
 })
 CHD_Final <- bind_rows(CHD_data)
 
-
 # Filter and select locations
-Selected_Locations <- CHD_Final |>
+Selected_Locations <- CHD_Final %>%
   filter(LocationName %in% c("Aitkin", "Anoka", "Becker", "Beltrami", "Benton", "Big Stone", "Blue Earth", "Brown", "Carlton", "Carver",
                              "Cass", "Chippewa", "Chisago", "Clay", "Clearwater", "Cook", "Cottonwood", "Crow Wing", "Dakota", "Dodge", "Douglas",
                              "Faribault", "Fillmore", "Freeborn", "Goodhue", "Grant", "Hennepin", "Houston", "Hubbard", "Isanti", "Itasca",
@@ -62,93 +57,78 @@ Selected_Locations <- CHD_Final |>
                              "Wilkin", "Winona", "Wright", "Yellow Medicine"),
          Year == 2021, StateAbbr == "MN")
 
-
 # Clean census data
 CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
 
-
 # Population estimates for CHD in MN
-PopEst_CHDMN <- CensusEstMN |>
-  filter(YEAR == 3) |>
-  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |>
+PopEst_CHDMN <- CensusEstMN %>%
+  filter(YEAR == 3) %>%
+  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) %>%
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit)
-
 
 # Calculate crude and age-adjusted values
 calc_aggregate_values <- function(df) {
-  df |>
+  df %>%
     mutate(Aggregate_Data_Value = Data_Value * AGE18PLUS_TOT / 100,
            Aggregate_Low_Confidence_Limit = Low_Confidence_Limit * AGE18PLUS_TOT / 100,
-           Aggregate_High_Confidence_Limit = High_Confidence_Limit * AGE18PLUS_TOT / 100) |>
+           Aggregate_High_Confidence_Limit = High_Confidence_Limit * AGE18PLUS_TOT / 100) %>%
     select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Aggregate_High_Confidence_Limit,
            Aggregate_Data_Value, Aggregate_Low_Confidence_Limit)
 }
 
-
-CHD_Crude21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == 'Crude prevalence'))
-CHD_Adj21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == 'Age-adjusted prevalence'))
+CHD_Crude21MN <- calc_aggregate_values(PopEst_CHDMN %>% filter(Data_Value_Type == 'Crude prevalence'))
+CHD_Adj21MN <- calc_aggregate_values(PopEst_CHDMN %>% filter(Data_Value_Type == 'Age-adjusted prevalence'))
 CHD_MN21 <- bind_rows(CHD_Adj21MN, CHD_Crude21MN)
 
-
-# User Interface --------------------------------------------------------------
 ui <- dashboardPage(
   dashboardHeader(
-    title = "CDC Places to MN Regions", 
+    title = "CDC Places to MN Regions",
     titleWidth = 400
-    #disable = TRUE #uncomment if the header should be hid
   ),
-  
   dashboardSidebar(
-    width = 350, #This makes the sidebar wider. However, the input boxes seem to have a set dimension resulting in long names still wrapping
-    
-    # Other input elements...
+    width = 350,
     selectInput(
       "parGlobal_county",
       label = "Select County of Interest",
       choices = sort(unique(mn_region_raw$County)),
-      selected = "Aitkin", #"Kittson"
+      selected = "Kittson",
       width = 350
     ),
-    
-    # Sidebar is required to have sub menus because it requires the tabName to reference
-    # By having sidebarMenu id, you can reference it and hide other filters with shinyjs 
-    # The CHB and Region Filters are greyed out when on the Region & CHB Definitions
     sidebarMenu(
       menuItem("Home", tabName = "tn_homePage"),
-      menuItem("Region & CHB Definitions", tabName = "tn_regionChbDefinations"),
+      menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"),
       menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease")
     )
   ),
   dashboardBody(
-    shinyjs::useShinyjs(), # Thank you Abby Stamm at MDH for suggesting to only call one function in a package rather then load entire package 
+    shinyjs::useShinyjs(),
     tabItems(
       tabItem(
-        tabName = "tn_homePage", # tabName is what ties the menuItem to the tabItem
+        tabName = "tn_homePage",
         tabsetPanel(
           tabPanel(
             "Home Page",
-            # Narrative section explaining the purpose of the dashboard
             fluidRow(
               column(
                 width = 12,
                 h1("Welcome to the CDC PLACES MN Region Dashboard"),
                 h4("This Shiny application replicates the work represented ",
                    tags$a(href="https://data.web.health.state.mn.us/web/mndata/", "here!", target= "_blank")),
-                tags$h4("Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state 
-                    projected healthcare indicators. This process was not able to be applied to the county level. Now, with 
-                    CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project 
-                    does not show in an easy format aggregate county regions. By doing this project, I am not only going to help 
-                    Quin County CHS, but other county regions in the state of MN or even the US."),
-                tags$h3("Those involved with this project:"),
+                tags$h4("Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state
+                projected healthcare indicators. This process was not able to be applied to the county level. Now, with
+                CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project
+                does not show in an easy format aggregate county regions. By doing this project, I am not only going to help
+                Quin County CHS, but other county regions in the state of MN or even the US."),
+                tags$h3("Those involved with this project are:"),
                 tags$h4("Emmanuel Fle Chea, MPH, Public Health Data Science, University of Minnesota School of Public Health"),
-                tags$h4("Mr. Patrick Olson (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher"),
+                tags$h4("Mr. Patrick Olson (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher")
               )
             )
           )
         )
       ),
       tabItem(
-        tabName = "tn_regionChbDefinations",
+        tabName = "tn_regionChbDefinitions",
         fluidRow(
           column(
             width = 12,
@@ -168,6 +148,18 @@ ui <- dashboardPage(
                 fluidRow(
                   column(6, uiOutput("region_narrative", style = "font-size: 20px;")),
                   column(6, uiOutput("chb_narrative_01", style = "font-size: 20px;"))
+                ),
+                fluidRow(
+                  column(
+                    width = 12,
+                    h3("Regions and Counties"),
+                    uiOutput("region_counties"),
+                  ),
+                  column(
+                    width = 12,
+                    h3("Community Health Boards"),
+                    uiOutput("chb_counties"),
+                  )
                 )
               )
             )
@@ -182,7 +174,7 @@ ui <- dashboardPage(
             "Adults>=18 CHD Exposure",
             fluidRow(
               column(
-                width = 2,
+                width = 12,
                 selectInput(
                   "parLocal_leadYear",
                   label = "Select Year",
@@ -195,23 +187,25 @@ ui <- dashboardPage(
                   choices = c("All", "State", "Region", "Community Health Board"),
                   selected = "All",
                   multiple = FALSE
-                )
-              ),
-              column(
-                width = 10,
-                box(
-                  title = "Coronary Heart Disease Exposure Estimate",
-                  status = "primary",
-                  solidHeader = TRUE,
-                  collapsible = TRUE,
-                  plotOutput("plot_chdEstimate")
                 ),
-                box(
-                  title = "Confidence Interval for Coronary Heart Disease Estimate",
-                  status = "primary",
-                  solidHeader = TRUE,
-                  collapsible = TRUE,
-                  plotOutput("plot_confidenceInterval")
+                fluidRow(
+                  column(
+                    width = 10,
+                    box(
+                      title = "Coronary Heart Disease Exposure Estimate",
+                      status = "primary",
+                      solidHeader = TRUE,
+                      collapsible = TRUE,
+                      plotOutput("plot_chdEstimate")
+                    ),
+                    box(
+                      title = "Confidence Interval for Coronary Heart Disease Estimate",
+                      status = "primary",
+                      solidHeader = TRUE,
+                      collapsible = TRUE,
+                      plotOutput("plot_confidenceInterval")
+                    )
+                  )
                 )
               )
             )
@@ -222,10 +216,7 @@ ui <- dashboardPage(
   )
 )
 
-# Server ----------------------------------------------------------------------
-
-# Region & County -----------------------
-
+# Server Logic ----------------------------------------------------------------
 server <- function(input, output, session) {
   observe({
     updateSelectInput(
@@ -265,6 +256,39 @@ server <- function(input, output, session) {
     )
   })
   
+  # Helper function to highlight selected county in text
+  highlight_county <- function(text, selected_county) {
+    gsub(selected_county, paste0("<font color='red'>", selected_county, "</font>"), text)
+  }
+  
+  output$region_counties <- renderUI({
+    selected_county <- input$parGlobal_county
+    regions <- mn_region_raw %>%
+      group_by(Region) %>%
+      summarise(Counties = paste(County, collapse = ", "))
+    
+    regions_text <- regions %>%
+      mutate(Text = paste0(Region, " Region:: ", Counties)) %>%
+      pull(Text)
+    
+    regions_text <- sapply(regions_text, highlight_county, selected_county = selected_county)
+    HTML(paste(regions_text, collapse = "<br>"))
+  })
+  
+  output$chb_counties <- renderUI({
+    selected_county <- input$parGlobal_county
+    chbs <- chb_raw %>%
+      group_by(CHB) %>%
+      summarise(Counties = paste(County, collapse = ", "))
+    
+    chb_text <- chbs %>%
+      mutate(Text = paste0(CHB, ":: ", Counties)) %>%
+      pull(Text)
+    
+    chb_text <- sapply(chb_text, highlight_county, selected_county = selected_county)
+    HTML(paste(chb_text, collapse = "<br>"))
+  })
+  
   # Reactive Data
   reactive_CHD_data <- reactive({
     CHD_MN21 %>% filter(CTYNAME == input$parGlobal_county)
@@ -285,5 +309,5 @@ server <- function(input, output, session) {
   })
 }
 
-# App Initialization ----------------------------------------------------------
-shinyApp(ui = ui, server = server)
+# Run the app -----------------------------------------------------------------
+shinyApp(ui = ui, server = server) 
