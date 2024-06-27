@@ -2,7 +2,7 @@
 # If it returns FALSE, then that's not the right directory that you're in.
 # file.exists("analytics_project_cdc_places_mn_region")
 # 
-# # Check if the directory exists
+# Check if the directory exists
 # if (!fs::dir_exists("analytics_project_cdc_places_mn_region")) {
 #   stop("The directory 'analytics_project_cdc_places_mn_region' does not exist.")
 # }
