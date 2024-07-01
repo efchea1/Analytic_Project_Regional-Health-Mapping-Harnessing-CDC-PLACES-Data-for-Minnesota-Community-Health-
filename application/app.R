@@ -1,4 +1,5 @@
-# Load Packages ---------------------------------------------------------------
+## Shiny Dashboard
+## Load Packages ---------------------------------------------------------------
 library(shiny)            # shiny package for building interactive web applications
 library(readr)            # readr package for reading data files
 library(ggplot2)          # ggplot2 package for creating graphics
@@ -84,7 +85,7 @@ CHD_Adj21MN <- calc_aggregate_values(PopEst_CHDMN |> filter(Data_Value_Type == '
 # Combine crude and age-adjusted values
 CHD_MN21 <- bind_rows(CHD_Adj21MN, CHD_Crude21MN)
 
-# App user interface ------------------------------------------
+# App user interface --------------------------------
 # Define UI -------------------------------------------------------------------
 ui <- dashboardPage(
   dashboardHeader(
@@ -100,21 +101,6 @@ ui <- dashboardPage(
       selected = "Kittson",
       width = 350
     ), # Sidebar with county selection input
-    selectInput(
-      "parLocal_chdYear",
-      label = "Select Year",
-      choices = sort(unique(Selected_Locations$Year), decreasing = TRUE),
-      selected = max(unique(Selected_Locations$Year)),
-      width = 350
-    ), # Year selection input for CHD data
-    selectInput(
-      "par_leadStateRegionChb",
-      label = "Select Comparison",
-      choices = c("All", "State", "Region", "Community Health Board"),
-      selected = "All",
-      multiple = FALSE,
-      width = 350
-    ), # Comparison selection input for CHD data
     sidebarMenu(
       menuItem("Home", tabName = "tn_homePage"),
       menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"),
@@ -163,7 +149,7 @@ ui <- dashboardPage(
                     h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")),
                     h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."),
                     h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board."),
-                    tags$hr(style = "border-top: 1px solid #ccc; margin-top: 20px; margin-bottom: 20px;")
+                    tags$hr(style = "border-top: 1px solid #ccc; margin-top: 20px; margin-bottom: 20px;") # Instructions and purpose for Region/CHB tab
                   )
                 ),
                 fluidRow(
@@ -174,12 +160,12 @@ ui <- dashboardPage(
                   column(
                     width = 12,
                     h3("Regions and Counties"),
-                    uiOutput("region_counties") # UI output for regions and counties list
+                    uiOutput("region_counties"), # UI output for regions and counties list
                   ),
                   column(
                     width = 12,
                     h3("Community Health Boards"),
-                    uiOutput("chb_counties") # UI output for CHB and counties list
+                    uiOutput("chb_counties"), # UI output for CHB and counties list
                   )
                 )
               )
@@ -196,6 +182,19 @@ ui <- dashboardPage(
             fluidRow(
               column(
                 width = 12,
+                selectInput(
+                  "parLocal_chdYear",
+                  label = "Select Year",
+                  choices = sort(unique(Selected_Locations$Year), decreasing = TRUE),
+                  selected = max(unique(Selected_Locations$Year))
+                ), # Year selection input for CHD data
+                selectInput(
+                  "par_leadStateRegionChb",
+                  label = "Select Comparison",
+                  choices = c("All", "State", "Region", "Community Health Board"),
+                  selected = "All",
+                  multiple = FALSE
+                ), # Comparison selection input for CHD data
                 fluidRow(
                   column(
                     width = 10,
@@ -244,7 +243,7 @@ server <- function(input, output, session) {
   
   output$region_narrative <- renderUI({
     filtered_region <- mn_region_raw |>
-      filter(County == input$parGlobal_county)
+      filter(County == input$parGlobal_county) # Filter region data for the selected county
     HTML(
       paste0(
         "<b>", unique(filtered_region$RegionName), " Region</b> is made up of the following counties: ",
