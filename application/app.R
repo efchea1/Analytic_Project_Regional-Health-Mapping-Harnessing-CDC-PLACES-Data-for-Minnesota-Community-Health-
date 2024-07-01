@@ -64,7 +64,7 @@ CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
 
 # Population estimates for CHD in MN
 PopEst_CHDMN <- CensusEstMN |> 
-  filter(YEAR == 3) |> # Filter data for the year 2022 (YEAR == 3)
+  filter(YEAR == 3) |> # Filter data for the year 2021 (YEAR == 3)
   inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Join census data with selected CHD locations
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit) # Select relevant columns
 
