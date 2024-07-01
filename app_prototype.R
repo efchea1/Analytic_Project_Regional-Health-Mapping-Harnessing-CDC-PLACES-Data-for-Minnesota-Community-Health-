@@ -46,16 +46,8 @@ CHD_Final <- bind_rows(CHD_data)
 
 # Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |> 
-  filter(LocationName %in% c("Aitkin", "Anoka", "Becker", "Beltrami", "Benton", "Big Stone", "Blue Earth", "Brown", "Carlton", "Carver",
-                             "Cass", "Chippewa", "Chisago", "Clay", "Clearwater", "Cook", "Cottonwood", "Crow Wing", "Dakota", "Dodge", "Douglas",
-                             "Faribault", "Fillmore", "Freeborn", "Goodhue", "Grant", "Hennepin", "Houston", "Hubbard", "Isanti", "Itasca",
-                             "Jackson", "Kanabec", "Kandiyohi", "Kittson", "Koochiching", "Lac qui Parle", "Lake", "Lake of the Woods", "Le Sueur",
-                             "Lincoln", "Lyon", "Mahnomen", "Marshall", "Martin", "McLeod", "Meeker", "Mille Lacs", "Morrison", "Mower", "Murray",
-                             "Nicollet", "Nobles", "Norman", "Olmsted", "Otter Tail", "Pennington", "Pine", "Pipestone", "Polk", "Pope", "Ramsey",
-                             "Red Lake", "Redwood", "Renville", "Rice", "Rock", "Roseau", "Scott", "Sherburne", "Sibley", "St. Louis", "Stearns",
-                             "Steele", "Stevens", "Swift", "Todd", "Traverse", "Wabasha", "Wadena", "Waseca", "Washington", "Watonwan",
-                             "Wilkin", "Winona", "Wright", "Yellow Medicine"),
-         Year == 2021, StateAbbr == "MN")
+  filter(Year == 2021, StateAbbr == "MN") |> 
+  left_join(mn_region_raw, join_by(LocationName == County)) # We left_join the mn_region_raw with the selected location
 
 # Remove " County" from county names in census data
 CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
@@ -74,6 +66,19 @@ calc_aggregate_values <- function(df) {
            Aggregate_High_Confidence_Limit = High_Confidence_Limit) |> # Keep confidence limits as rates
     select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Aggregate_High_Confidence_Limit,
            Aggregate_Data_Value, Aggregate_Low_Confidence_Limit) # Select relevant columns
+}
+
+# Function to calculate region aggregate values
+aggragate_values <- function(df, userinput) {
+  df |> 
+    group_by(Region, Data_Value_Type) |> 
+    mutate(Aggregate_Data_Value = Data_Value, # Use Data_Value directly as rates
+           Aggregate_Low_Confidence_Limit = Low_Confidence_Limit,
+           Aggregate_High_Confidence_Limit = High_Confidence_Limit) |> # Keep confidence limits as rates
+    select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Aggregate_High_Confidence_Limit,
+           Aggregate_Data_Value, Aggregate_Low_Confidence_Limit) |>  # Select relevant columns  
+    filter(userinput == LocationName)
+
 }
 
 # Calculate crude values
@@ -198,15 +203,15 @@ ui <- dashboardPage(
                 fluidRow(
                   column(
                     width = 10,
+                    # box(
+                    #   title = textOutput("selected_county_title"),
+                    #   status = "primary",
+                    #   solidHeader = TRUE,
+                    #   collapsible = TRUE,
+                    #   plotOutput("plot_chdEstimate") # Plot output for CHD exposure estimate
+                    # ),
                     box(
-                      title = textOutput("selected_county_title"),
-                      status = "primary",
-                      solidHeader = TRUE,
-                      collapsible = TRUE,
-                      plotOutput("plot_chdEstimate") # Plot output for CHD exposure estimate
-                    ),
-                    box(
-                      title = "Confidence Interval for Coronary Heart Disease Estimate",
+                      title = uiOutput("selected_county_title"),
                       status = "primary",
                       solidHeader = TRUE,
                       collapsible = TRUE,
@@ -297,28 +302,31 @@ server <- function(input, output, session) {
   })
 
   output$selected_county_title <- renderText({
-    paste("Coronary Heart Disease Exposure Estimate", input$parGlobal_county) # Create the name of the selected county above the graph
-  })
+    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure Estimate")) 
+               #sep= '<br/>')) # Create the name of the selected county above the graph. # sep= '<br/>' creates a break.
+  })           # 
+    
+
 
   # Reactive Data for plotting
   reactive_CHD_data <- reactive({
     CHD_MN21 |> filter(CTYNAME == input$parGlobal_county) # Filter CHD data for the selected county
   })
 
-  output$plot_chdEstimate <- renderPlot({
-    data <- reactive_CHD_data() # Get the filtered CHD data
-    ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, fill = Data_Value_Type)) +
-      geom_bar(stat = "identity", position = "dodge") +
-      labs(title = paste(input$parGlobal_county), x = "Data Value Type", y = "Estimate (Rate)") +
-      theme_minimal()
-  })
+  # output$plot_chdEstimate <- renderPlot({
+  #   data <- reactive_CHD_data() # Get the filtered CHD data
+  #   ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, fill = Data_Value_Type)) +
+  #     geom_bar(stat = "identity", position = "dodge") +
+  #     labs(title = paste(input$parGlobal_county, "County"), x = "Data Value Type", y = "Estimate (Rate)") +
+  #     theme_minimal()
+  # })
 
   output$plot_confidenceInterval <- renderPlot({
     data <- reactive_CHD_data() # Get the filtered CHD data
     ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, color = Data_Value_Type)) +
       geom_errorbar(aes(ymin = Aggregate_Low_Confidence_Limit, ymax = Aggregate_High_Confidence_Limit), width = 0.2) +
       geom_point() +
-      labs(title = paste(input$parGlobal_county), x = "Data Value Type", y = "Estimate (Rate)") +
+      labs(x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
   })
 }
