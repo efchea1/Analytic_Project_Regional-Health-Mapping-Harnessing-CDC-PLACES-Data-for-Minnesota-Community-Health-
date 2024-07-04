@@ -338,7 +338,7 @@ server <- function(input, output, session) {
   }) # Create the name of the selected chb region above the graph
   
   output$selected_chb_title <- renderText({
-    HTML(paste(input$parGlobal_county, "County", "<br/>Community Health Board Coronary Heart Disease Exposure"))
+    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure"))
   }) # Create the name of the selected CHB above the graph
   
   # Reactive Data for plotting--------------
