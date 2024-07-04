@@ -1,7 +1,7 @@
 ## Shiny Dashboard
 
 # Load Packages ---------------------------------------------------------------
-library(shiny)            # shiny package for building interactive web applications
+library(shiny)            # Shiny package for building interactive web applications
 library(ggplot2)          # ggplot2 package for creating graphics
 library(dplyr)            # dplyr package for data manipulation
 library(shinydashboard)   # shinydashboard package for creating dashboards
@@ -48,7 +48,7 @@ CHD_Final <- bind_rows(CHD_data)
 # Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |> 
   filter(Year == 2021, StateAbbr == "MN") |> 
-  left_join(mn_region_raw, join_by(LocationName == County)) # We left_join the mn_region_raw with the selected location
+  left_join(mn_region_raw, by = c("LocationName" = "County")) # Join the mn_region_raw with the selected locations
 
 # Remove " County" from county names in census data
 CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
@@ -75,8 +75,8 @@ aggregate_values <- function(df, userinput) {
     group_by(Region, Data_Value_Type) |> 
     summarise(Aggregate_Data_Value = mean(Data_Value, na.rm = TRUE), # Use Data_Value directly as rates
               Aggregate_Low_Confidence_Limit = mean(Low_Confidence_Limit, na.rm = TRUE),
-              Aggregate_High_Confidence_Limit = mean(High_Confidence_Limit, na.rm = TRUE)) |> # Keep confidence limits as rates
-    ungroup() |> 
+              Aggregate_High_Confidence_Limit = mean(High_Confidence_Limit, na.rm = TRUE),
+              .groups = 'drop') |> # Drop the grouping structure after summarizing
     filter(Region == userinput)
 }
 
@@ -111,7 +111,7 @@ ui <- dashboardPage(
       width = 350
     ), # Year selection input for CHD data
     selectInput(
-      "par_leadStateRegionChb",
+      "par_chdStateRegionChb",
       label = "Select Comparison",
       choices = c("All", "State", "Region", "Community Health Board"),
       selected = "All",
@@ -202,13 +202,6 @@ ui <- dashboardPage(
                 fluidRow(
                   column(
                     width = 10,
-                    # box(
-                    #   title = textOutput("selected_county_title"),
-                    #   status = "primary",
-                    #   solidHeader = TRUE,
-                    #   collapsible = TRUE,
-                    #   plotOutput("plot_chdEstimate") # Plot output for CHD exposure estimate
-                    # ),
                     box(
                       title = uiOutput("selected_county_title"),
                       status = "primary",
@@ -222,13 +215,13 @@ ui <- dashboardPage(
             ),
             fluidRow(
               column(
-                width = 12,
+                width = 10,
                 box(
-                  title = "CHB Region Coronary Heart Disease Exposure",
+                  title = uiOutput("selected_chb_region_title"),
                   status = "primary",
                   solidHeader = TRUE,
                   collapsible = TRUE,
-                  plotOutput("plot_chbRegion")
+                  plotOutput("plot_chbRegion") # Plot output for CHD Region
                 )
               )
             )
@@ -279,7 +272,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Helper function to highlight selected county in text
+  # Helper function to highlight selected county in text-------
   highlight_county <- function(text, selected_county) {
     gsub(selected_county, paste0("<font color='red'>", selected_county, "</font>"), text) # Highlight the selected county in red
   }
@@ -314,22 +307,16 @@ server <- function(input, output, session) {
   
   output$selected_county_title <- renderText({
     HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure Estimate")) 
-    #sep= '<br/>')) # Create the name of the selected county above the graph. # sep= '<br/>' creates a break.
-  })           
+  }) # Create the name of the selected county above the graph
   
+  output$selected_chb_region_title <- renderText({
+    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure")) 
+  }) # Create the name of the selected chb region above the graph
   
-  # Reactive Data for plotting
+  # Reactive Data for plotting--------------
   reactive_CHD_data <- reactive({
     CHD_MN21 |> filter(CTYNAME == input$parGlobal_county) # Filter CHD data for the selected county
   })
-  
-  # output$plot_chdEstimate <- renderPlot({
-  #   data <- reactive_CHD_data() # Get the filtered CHD data
-  #   ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, fill = Data_Value_Type)) +
-  #     geom_bar(stat = "identity", position = "dodge") +
-  #     labs(title = paste(input$parGlobal_county, "County"), x = "Data Value Type", y = "Estimate (Rate)") +
-  #     theme_minimal()
-  # })
   
   output$plot_confidenceInterval <- renderPlot({
     data <- reactive_CHD_data() # Get the filtered CHD data
@@ -338,7 +325,7 @@ server <- function(input, output, session) {
       geom_point() +
       labs(x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
-  })
+  }) # Confidence interval plot for the County
   
   reactive_region_data <- reactive({
     county_region <- mn_region_raw |>
@@ -346,20 +333,19 @@ server <- function(input, output, session) {
       pull(Region) |>
       unique()
     aggregate_values(PopEst_CHDMN, county_region)
-  })
+  }) # Filter CHD data for the selected region
   
   output$plot_chbRegion <- renderPlot({
     data <- reactive_region_data() # Get the aggregated CHD data for the region
     ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, fill = Data_Value_Type)) +
       geom_bar(stat = "identity", position = "dodge") +
-      labs(title = paste("Region:", unique(data$Region)), x = "Data Value Type", y = "Estimate (Rate)") +
+      labs(title = paste(unique(data$Region), "Region"), x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
-  })
+  }) # Plot for the CHD Region
 }
 
 # Run the app -----------------------------------------------------------------
 shinyApp(ui = ui, server = server) # Run the Shiny application 
-
 
 
 
