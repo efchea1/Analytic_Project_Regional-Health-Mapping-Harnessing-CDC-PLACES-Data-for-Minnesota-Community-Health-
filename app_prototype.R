@@ -1,4 +1,4 @@
-## Shiny Dashboard
+# Shiny Dashboard--------------------------------
 
 # Load Packages ---------------------------------------------------------------
 library(shiny)            # Shiny package for building interactive web applications
@@ -48,7 +48,8 @@ CHD_Final <- bind_rows(CHD_data)
 # Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |>
   filter(Year == 2021, StateAbbr == "MN") |>
-  left_join(mn_region_raw, by = c("LocationName" = "County")) # Join the mn_region_raw with the selected locations
+  left_join(mn_region_raw, by = c("LocationName" = "County")) |> # Left join the mn_region_raw with the selected locations
+  left_join(chb_raw, by = c("LocationName" = "County")) # Left join the chb_raw with the selected location
 
 # Remove " County" from county names in census data
 CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
@@ -57,7 +58,7 @@ CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
 PopEst_CHDMN <- CensusEstMN |>
   filter(YEAR == 3) |> # Filter data for the year 2021 (YEAR == 3)
   inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Join census data with selected CHD locations
-  select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region) # Select relevant columns
+  select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB) # Select relevant columns
 
 # Function to calculate aggregate values
 calc_aggregate_values <- function(df) {
@@ -66,10 +67,10 @@ calc_aggregate_values <- function(df) {
            Aggregate_Low_Confidence_Limit = Low_Confidence_Limit,
            Aggregate_High_Confidence_Limit = High_Confidence_Limit) |> # Keep confidence limits as rates
     select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Aggregate_High_Confidence_Limit,
-           Aggregate_Data_Value, Aggregate_Low_Confidence_Limit, Region) # Select relevant columns
+           Aggregate_Data_Value, Aggregate_Low_Confidence_Limit, Region, CHB) # Select relevant columns
 }
 
-# Function to calculate region, chb aggregate values
+# Function to calculate region aggregate values
 aggregate_values <- function(df, userinput) {
   df |>
     group_by(Region, Data_Value_Type) |>
@@ -78,6 +79,17 @@ aggregate_values <- function(df, userinput) {
               Aggregate_High_Confidence_Limit = mean(High_Confidence_Limit, na.rm = TRUE),
               .groups = 'drop') |> # Drop the grouping structure after summarizing
     filter(Region == userinput)
+}
+
+# Function to calculate chb aggregate values
+aggregate_values_chb <- function(df, userinput) {
+  df |>
+    group_by(CHB, Data_Value_Type) |>
+    summarise(Aggregate_Data_Value = mean(Data_Value, na.rm = TRUE), # Use Data_Value directly as rates
+              Aggregate_Low_Confidence_Limit = mean(Low_Confidence_Limit, na.rm = TRUE),
+              Aggregate_High_Confidence_Limit = mean(High_Confidence_Limit, na.rm = TRUE),
+              .groups = 'drop') |> # Drop the grouping structure after summarizing
+    filter(CHB == userinput)
 }
 
 # Calculate crude values
@@ -217,13 +229,25 @@ ui <- dashboardPage(
               column(
                 width = 10,
                 box(
-                  title = uiOutput("selected_chb_region_title"),
+                  title = uiOutput("selected_region_title"),
                   status = "primary",
                   solidHeader = TRUE,
                   collapsible = TRUE,
                   plotOutput("plot_chbRegion") # Plot output for CHD Region
                 )
               )
+            )
+          )
+        ),
+        fluidRow(
+          column(
+            width = 10,
+            box(
+              title = uiOutput("selected_chb_title"),
+              status = "primary",
+              solidHeader = TRUE,
+              collapsible = TRUE,
+              plotOutput("plot_chdCHB") # Plot output for CHB
             )
           )
         )
@@ -241,7 +265,7 @@ server <- function(input, output, session) {
       choices = unique(mn_region_raw$RegionName)
     ) # Update region input choices based on unique region names in the data
   })
-
+  
   observe({
     updateSelectInput(
       session,
@@ -249,7 +273,7 @@ server <- function(input, output, session) {
       choices = unique(chb_raw$CHBName)
     ) # Update CHB input choices based on unique CHB names in the data
   })
-
+  
   output$region_narrative <- renderUI({
     filtered_region <- mn_region_raw |>
       filter(County == input$parGlobal_county)
@@ -260,7 +284,7 @@ server <- function(input, output, session) {
       ) # Create HTML content for displaying the region narrative
     )
   })
-
+  
   output$chb_narrative_01 <- renderUI({
     filtered_chb <- chb_raw |>
       filter(County == input$parGlobal_county) # Filter CHB data for the selected county
@@ -271,53 +295,57 @@ server <- function(input, output, session) {
       ) # Create HTML content for displaying the CHB narrative
     )
   })
-
+  
   # Helper function to highlight selected county in text-------
   highlight_county <- function(text, selected_county) {
     gsub(selected_county, paste0("<font color='red'>", selected_county, "</font>"), text) # Highlight the selected county in red
   }
-
+  
   output$region_counties <- renderUI({
     selected_county <- input$parGlobal_county
     regions <- mn_region_raw |>
       group_by(Region) |>
       summarise(Counties = paste(County, collapse = ", ")) # Group data by region and concatenate county names
-
+    
     regions_text <- regions |>
       mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) |>
       pull(Text) # Create HTML text with bold region names
-
+    
     regions_text <- sapply(regions_text, highlight_county, selected_county = selected_county) # Highlight selected county in the regions text
     HTML(paste(regions_text, collapse = "<br>")) # Render HTML for regions and counties
   })
-
+  
   output$chb_counties <- renderUI({
     selected_county <- input$parGlobal_county
     chbs <- chb_raw |>
       group_by(CHB) |>
       summarise(Counties = paste(County, collapse = ", ")) # Group data by CHB and concatenate county names
-
+    
     chb_text <- chbs |>
       mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) |>
       pull(Text) # Create HTML text with bold CHB names
-
+    
     chb_text <- sapply(chb_text, highlight_county, selected_county = selected_county) # Highlight selected county in the CHB text
     HTML(paste(chb_text, collapse = "<br>")) # Render HTML for CHBs and counties
   })
-
+  
   output$selected_county_title <- renderText({
     HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure Estimate"))
   }) # Create the name of the selected county above the graph
-
-  output$selected_chb_region_title <- renderText({
+  
+  output$selected_region_title <- renderText({
     HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure"))
   }) # Create the name of the selected chb region above the graph
-
+  
+  output$selected_chb_title <- renderText({
+    HTML(paste(input$parGlobal_county, "County", "<br/>Community Health Board Coronary Heart Disease Exposure"))
+  }) # Create the name of the selected CHB above the graph
+  
   # Reactive Data for plotting--------------
   reactive_CHD_data <- reactive({
     CHD_MN21 |> filter(CTYNAME == input$parGlobal_county) # Filter CHD data for the selected county
   })
-
+  
   output$plot_confidenceInterval <- renderPlot({
     data <- reactive_CHD_data() # Get the filtered CHD data
     ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, color = Data_Value_Type)) +
@@ -326,7 +354,7 @@ server <- function(input, output, session) {
       labs(x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
   }) # Confidence interval plot for the County
-
+  
   reactive_region_data <- reactive({
     county_region <- mn_region_raw |>
       filter(County == input$parGlobal_county) |>
@@ -334,7 +362,7 @@ server <- function(input, output, session) {
       unique()
     aggregate_values(PopEst_CHDMN, county_region)
   }) # Filter CHD data for the selected region
-
+  
   output$plot_chbRegion <- renderPlot({
     data <- reactive_region_data() # Get the aggregated CHD data for the region
     ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, color = Data_Value_Type)) +
@@ -343,11 +371,27 @@ server <- function(input, output, session) {
       labs(title = paste(unique(data$Region), "Region"), x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
   }) # Confidence interval plot for the CHD Region
+  
+  reactive_chb_data <- reactive({
+    county_chb <- chb_raw |>
+      filter(County == input$parGlobal_county) |>
+      pull(CHB) |>
+      unique()
+    aggregate_values_chb(PopEst_CHDMN, county_chb)
+  }) # Filter CHD data for the selected CHB
+  
+  output$plot_chdCHB <- renderPlot({
+    data <- reactive_chb_data() # Get the aggregated CHD data for the CHB
+    ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, color = Data_Value_Type)) +
+      geom_errorbar(aes(ymin = Aggregate_Low_Confidence_Limit, ymax = Aggregate_High_Confidence_Limit), width = 0.2) +
+      geom_point() +
+      labs(title = paste(unique(data$CHB), "Community Health Board"), x = "Data Value Type", y = "Estimate (Rate)") +
+      theme_minimal()
+  }) # Confidence interval plot for the CHB
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server) # Run the Shiny application
-
+shinyApp(ui = ui, server = server) # Run the Shiny application 
 
 
 
