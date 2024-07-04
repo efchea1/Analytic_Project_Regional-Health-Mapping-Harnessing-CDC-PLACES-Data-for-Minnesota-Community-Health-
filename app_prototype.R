@@ -46,8 +46,8 @@ CHD_data <- lapply(CHD_data, function(df) {
 CHD_Final <- bind_rows(CHD_data)
 
 # Filter and select specific locations and data for the year 2021 in MN
-Selected_Locations <- CHD_Final |> 
-  filter(Year == 2021, StateAbbr == "MN") |> 
+Selected_Locations <- CHD_Final |>
+  filter(Year == 2021, StateAbbr == "MN") |>
   left_join(mn_region_raw, by = c("LocationName" = "County")) # Join the mn_region_raw with the selected locations
 
 # Remove " County" from county names in census data
@@ -71,8 +71,8 @@ calc_aggregate_values <- function(df) {
 
 # Function to calculate region, chb aggregate values
 aggregate_values <- function(df, userinput) {
-  df |> 
-    group_by(Region, Data_Value_Type) |> 
+  df |>
+    group_by(Region, Data_Value_Type) |>
     summarise(Aggregate_Data_Value = mean(Data_Value, na.rm = TRUE), # Use Data_Value directly as rates
               Aggregate_Low_Confidence_Limit = mean(Low_Confidence_Limit, na.rm = TRUE),
               Aggregate_High_Confidence_Limit = mean(High_Confidence_Limit, na.rm = TRUE),
@@ -241,7 +241,7 @@ server <- function(input, output, session) {
       choices = unique(mn_region_raw$RegionName)
     ) # Update region input choices based on unique region names in the data
   })
-  
+
   observe({
     updateSelectInput(
       session,
@@ -249,7 +249,7 @@ server <- function(input, output, session) {
       choices = unique(chb_raw$CHBName)
     ) # Update CHB input choices based on unique CHB names in the data
   })
-  
+
   output$region_narrative <- renderUI({
     filtered_region <- mn_region_raw |>
       filter(County == input$parGlobal_county)
@@ -260,7 +260,7 @@ server <- function(input, output, session) {
       ) # Create HTML content for displaying the region narrative
     )
   })
-  
+
   output$chb_narrative_01 <- renderUI({
     filtered_chb <- chb_raw |>
       filter(County == input$parGlobal_county) # Filter CHB data for the selected county
@@ -271,53 +271,53 @@ server <- function(input, output, session) {
       ) # Create HTML content for displaying the CHB narrative
     )
   })
-  
+
   # Helper function to highlight selected county in text-------
   highlight_county <- function(text, selected_county) {
     gsub(selected_county, paste0("<font color='red'>", selected_county, "</font>"), text) # Highlight the selected county in red
   }
-  
+
   output$region_counties <- renderUI({
     selected_county <- input$parGlobal_county
     regions <- mn_region_raw |>
       group_by(Region) |>
       summarise(Counties = paste(County, collapse = ", ")) # Group data by region and concatenate county names
-    
+
     regions_text <- regions |>
       mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) |>
       pull(Text) # Create HTML text with bold region names
-    
+
     regions_text <- sapply(regions_text, highlight_county, selected_county = selected_county) # Highlight selected county in the regions text
     HTML(paste(regions_text, collapse = "<br>")) # Render HTML for regions and counties
   })
-  
+
   output$chb_counties <- renderUI({
     selected_county <- input$parGlobal_county
     chbs <- chb_raw |>
       group_by(CHB) |>
       summarise(Counties = paste(County, collapse = ", ")) # Group data by CHB and concatenate county names
-    
+
     chb_text <- chbs |>
       mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) |>
       pull(Text) # Create HTML text with bold CHB names
-    
+
     chb_text <- sapply(chb_text, highlight_county, selected_county = selected_county) # Highlight selected county in the CHB text
     HTML(paste(chb_text, collapse = "<br>")) # Render HTML for CHBs and counties
   })
-  
+
   output$selected_county_title <- renderText({
-    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure Estimate")) 
+    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure Estimate"))
   }) # Create the name of the selected county above the graph
-  
+
   output$selected_chb_region_title <- renderText({
-    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure")) 
+    HTML(paste(input$parGlobal_county, "County", "<br/>Coronary Heart Disease Exposure"))
   }) # Create the name of the selected chb region above the graph
-  
+
   # Reactive Data for plotting--------------
   reactive_CHD_data <- reactive({
     CHD_MN21 |> filter(CTYNAME == input$parGlobal_county) # Filter CHD data for the selected county
   })
-  
+
   output$plot_confidenceInterval <- renderPlot({
     data <- reactive_CHD_data() # Get the filtered CHD data
     ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, color = Data_Value_Type)) +
@@ -326,7 +326,7 @@ server <- function(input, output, session) {
       labs(x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
   }) # Confidence interval plot for the County
-  
+
   reactive_region_data <- reactive({
     county_region <- mn_region_raw |>
       filter(County == input$parGlobal_county) |>
@@ -334,18 +334,19 @@ server <- function(input, output, session) {
       unique()
     aggregate_values(PopEst_CHDMN, county_region)
   }) # Filter CHD data for the selected region
-  
+
   output$plot_chbRegion <- renderPlot({
     data <- reactive_region_data() # Get the aggregated CHD data for the region
-    ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, fill = Data_Value_Type)) +
-      geom_bar(stat = "identity", position = "dodge") +
+    ggplot(data, aes(x = Data_Value_Type, y = Aggregate_Data_Value, color = Data_Value_Type)) +
+      geom_errorbar(aes(ymin = Aggregate_Low_Confidence_Limit, ymax = Aggregate_High_Confidence_Limit), width = 0.2) +
+      geom_point() +
       labs(title = paste(unique(data$Region), "Region"), x = "Data Value Type", y = "Estimate (Rate)") +
       theme_minimal()
-  }) # Plot for the CHD Region
+  }) # Confidence interval plot for the CHD Region
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server) # Run the Shiny application 
+shinyApp(ui = ui, server = server) # Run the Shiny application
 
 
 
