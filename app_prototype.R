@@ -168,7 +168,6 @@ ui <- dashboardPage(
                   title = uiOutput("selected_state_title"), # State title output
                   status = "primary", # Box status
                   solidHeader = TRUE, # Solid header
-                  collapsible = TRUE, # Collapsible box
                   width = NULL, # Full width
                   plotOutput("plot_state", height = "200px"), # State plot output
                   tableOutput("table_state") # state table output
@@ -178,10 +177,9 @@ ui <- dashboardPage(
                 width = 6,
                 box(
                   title = uiOutput("selected_region_title"), # Region title output
-                  status = "primary",
-                  solidHeader = TRUE,
-                  collapsible = TRUE,
-                  width = NULL,
+                  status = "primary", # Box status
+                  solidHeader = TRUE, # Solid header
+                  width = NULL, # Full width
                   plotOutput("plot_chbRegion", height = "200px"), # Region plot output
                   tableOutput("table_region") # region table output
                 )
@@ -192,22 +190,20 @@ ui <- dashboardPage(
                 width = 6,
                 box(
                   title = uiOutput("selected_chb_title"), # CHB title output
-                  status = "primary",
-                  solidHeader = TRUE,
-                  collapsible = TRUE,
-                  width = NULL,
+                  status = "primary", # Box status
+                  solidHeader = TRUE, # Solid header
+                  width = NULL, # Full width
                   plotOutput("plot_chdCHB", height = "200px"), # CHB plot output
-                  tableOutput("table_chb") # chb table output
+                  tableOutput("table_chb") # CHB table output
                 )
               ),
               column(
                 width = 6,
                 box(
                   title = uiOutput("selected_county_title"), # County title output
-                  status = "primary",
-                  solidHeader = TRUE,
-                  collapsible = TRUE,
-                  width = NULL,
+                  status = "primary", # Box status
+                  solidHeader = TRUE, # Solid header
+                  width = NULL, # Full width
                   plotOutput("plot_county", height = "200px"), # County plot output
                   tableOutput("table_county") # county table output
                 )
