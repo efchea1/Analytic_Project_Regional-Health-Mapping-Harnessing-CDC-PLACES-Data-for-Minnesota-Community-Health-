@@ -6,7 +6,7 @@ library(ggplot2)          # ggplot2 package for creating graphics
 library(dplyr)            # dplyr package for data manipulation
 library(shinydashboard)   # shinydashboard package for creating dashboards
 library(shinyjs)          # shinyjs package for adding JavaScript functionality
-library(tidyr)            # tidyr package for handling missing values 
+library(tidyr)            # tidyr package for handling missing values  
 
 # Load census estimate data for Minnesota from GitHub -------------------------
 CensusEstMN <- read.csv(
@@ -42,7 +42,7 @@ CHD_data <- lapply(CHD_data, function(df) {
   df
 }) # Clean each CHD data frame by adding LocationID and correcting the Geolocation column name
 
-# Combine all cleaned CHD data frames into one data frame
+# Cleaned CHD data frames into one data frame
 CHD_Final <- bind_rows(CHD_data) # Combine all cleaned CHD data frames into one data frame using bind_rows
 
 # Filter and select specific locations and data for the year 2021 in MN
@@ -78,7 +78,7 @@ aggregate_values <- function(df, userInput, filterBy) {
 # Pre-calculate Minnesota total
 mn_total <- PopEst_CHDMN |>
   mutate(StateAbbr = "MN") |>
-  aggregate_values("MN", 'StateAbbr') %>%
+  aggregate_values("MN", 'StateAbbr') |>  
   mutate(across(everything(), ~tidyr::replace_na(., 0))) # Pre-calculate the aggregate CHD data for the state of Minnesota and handle NA values
 
 # Define UI -------------------------------------------------------------------
@@ -171,7 +171,7 @@ ui <- dashboardPage(
                   collapsible = TRUE, # Collapsible box
                   width = NULL, # Full width
                   plotOutput("plot_state", height = "200px"), # State plot output
-                  div(style = 'overflow-x: scroll', tableOutput("table_state")) # Scrollable table output
+                  tableOutput("table_state") # state table output
                 )
               ),
               column(
@@ -183,7 +183,7 @@ ui <- dashboardPage(
                   collapsible = TRUE,
                   width = NULL,
                   plotOutput("plot_chbRegion", height = "200px"), # Region plot output
-                  div(style = 'overflow-x: scroll', tableOutput("table_region")) # Scrollable table output
+                  tableOutput("table_region") # region table output
                 )
               )
             ),
@@ -197,7 +197,7 @@ ui <- dashboardPage(
                   collapsible = TRUE,
                   width = NULL,
                   plotOutput("plot_chdCHB", height = "200px"), # CHB plot output
-                  div(style = 'overflow-x: scroll', tableOutput("table_chb")) # Scrollable table output
+                  tableOutput("table_chb") # chb table output
                 )
               ),
               column(
@@ -209,7 +209,7 @@ ui <- dashboardPage(
                   collapsible = TRUE,
                   width = NULL,
                   plotOutput("plot_county", height = "200px"), # County plot output
-                  div(style = 'overflow-x: scroll', tableOutput("table_county")) # Scrollable table output
+                  tableOutput("table_county") # county table output
                 )
               )
             )
