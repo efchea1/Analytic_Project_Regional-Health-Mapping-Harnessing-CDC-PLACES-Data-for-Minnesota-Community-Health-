@@ -86,10 +86,10 @@ compute_y_axis_limits <- function(data_list) {
   min_value <- min(sapply(data_list, function(df) min(df$`Low Confidence Limit`, na.rm = TRUE))) # Finding the minimum value across all data frames
   max_value <- max(sapply(data_list, function(df) max(df$`High Confidence Limit`, na.rm = TRUE))) # Finding the maximum value across all data frames
   c(min_value, max_value) # Returning the range of y-axis limits
-}
+} # This helps fixing the y-axis to particular values because at first the y-axis of the four graphs had different values and it was changing.
 
 # Function to create ggplot graph ---------------------------------------------
-create_chd_plot <- function(data, y_limits) {
+chd_plot <- function(data, y_limits) {
   ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
     geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) +
     geom_point() +
@@ -110,7 +110,7 @@ ui <- dashboardPage(
     width = 350, # Setting sidebar width
     selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = "Kittson", width = 350), # County selection input
     selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Year selection input
-    selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "Community Health Board"), selected = "All", multiple = FALSE, width = 350), # Comparison selection input
+    selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "CHB"), selected = "All", multiple = FALSE, width = 350), # Comparison selection input
     sidebarMenu(
       menuItem("Home", tabName = "tn_homePage"), # Home tab
       menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"), # Region & CHB Definition tab
@@ -190,6 +190,7 @@ ui <- dashboardPage(
                   title = uiOutput("selected_state_title"), # State title output
                   status = "primary", # Box status
                   solidHeader = TRUE, # Solid header
+                  collapsible = TRUE, # Collapsible box
                   width = NULL, # Full width
                   plotOutput("plot_state", height = "200px"), # State plot output
                   tableOutput("table_state") # State table output
@@ -201,6 +202,7 @@ ui <- dashboardPage(
                   title = uiOutput("selected_region_title"), # Region title output
                   status = "primary", # Box status
                   solidHeader = TRUE, # Solid header
+                  collapsible = TRUE, # Collapsible box
                   width = NULL, # Full width
                   plotOutput("plot_chbRegion", height = "200px"), # Region plot output
                   tableOutput("table_region") # Region table output
@@ -214,6 +216,7 @@ ui <- dashboardPage(
                   title = uiOutput("selected_chb_title"), # CHB title output
                   status = "primary", # Box status
                   solidHeader = TRUE, # Solid header
+                  collapsible = TRUE, # Collapsible box
                   width = NULL, # Full width
                   plotOutput("plot_chdCHB", height = "200px"), # CHB plot output
                   tableOutput("table_chb") # CHB table output
@@ -225,6 +228,7 @@ ui <- dashboardPage(
                   title = uiOutput("selected_county_title"), # County title output
                   status = "primary", # Box status
                   solidHeader = TRUE, # Solid header
+                  collapsible = TRUE, # Collapsible box
                   width = NULL, # Full width
                   plotOutput("plot_county", height = "200px"), # County plot output
                   tableOutput("table_county") # County table output
@@ -336,7 +340,7 @@ server <- function(input, output, session) {
   }) # Creating the title for the selected CHB
   
   # Reactive Data for plotting--------------
-  reactive_CHD_data <- reactive({
+  reactive_county_data <- reactive({
     PopEst_CHDMN |>
       filter(CTYNAME == input$parGlobal_county) |>
       aggregate_values(input$parGlobal_county, "CTYNAME") |>
@@ -389,7 +393,7 @@ server <- function(input, output, session) {
   # Compute y-axis limits
   y_axis_limits <- reactive({
     data_list <- list(
-      reactive_CHD_data(),
+      reactive_county_data(),
       reactive_region_data(),
       reactive_chb_data(),
       mn_total |>
@@ -404,15 +408,15 @@ server <- function(input, output, session) {
   })
   
   output$plot_county <- renderPlot({
-    create_chd_plot(reactive_CHD_data(), y_axis_limits()) # Rendering plot for the selected county with customized y-axis limits
+    chd_plot(reactive_county_data(), y_axis_limits()) # Rendering plot for the selected county with customized y-axis limits
   })
   
   output$plot_chbRegion <- renderPlot({
-    create_chd_plot(reactive_region_data(), y_axis_limits()) # Rendering plot for the selected region with customized y-axis limits
+    chd_plot(reactive_region_data(), y_axis_limits()) # Rendering plot for the selected region with customized y-axis limits
   })
   
   output$plot_chdCHB <- renderPlot({
-    create_chd_plot(reactive_chb_data(), y_axis_limits()) # Rendering plot for the selected CHB with customized y-axis limits
+    chd_plot(reactive_chb_data(), y_axis_limits()) # Rendering plot for the selected CHB with customized y-axis limits
   })
   
   output$plot_state <- renderPlot({
@@ -424,12 +428,12 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-    create_chd_plot(data, y_axis_limits()) # Rendering plot for the state with customized y-axis limits
+    chd_plot(data, y_axis_limits()) # Rendering plot for the state with customized y-axis limits
   })
   
   # Summary Tables -----------------------------------------------------------
   output$table_county <- renderTable({
-    reactive_CHD_data() # Rendering summary table for the selected county
+    reactive_county_data() # Rendering summary table for the selected county
   })
   
   output$table_region <- renderTable({
