@@ -6,12 +6,12 @@ library(ggplot2)          # ggplot2 package for creating graphics
 library(dplyr)            # dplyr package for data manipulation
 library(shinydashboard)   # shinydashboard package for creating dashboards
 library(shinyjs)          # shinyjs package for adding JavaScript functionality
-library(tidyr)            # tidyr package for handling missing values  
+library(tidyr)            # tidyr package for handling missing values
 
 # Load census estimate data for Minnesota from GitHub -------------------------
 CensusEstMN <- read.csv(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv'
-) # Read census estimate data for Minnesota from a CSV file hosted on GitHub
+) # Reading census estimate data for Minnesota from a CSV file hosted on GitHub
 
 # List of URLs from GitHub for Coronary Heart Disease (CHD) data CSV files from 2018 to 2021
 CHD_files <- list(
@@ -19,48 +19,48 @@ CHD_files <- list(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2019.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2020.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2021.csv'
-) # Create a list of URLs for CHD data CSV files from 2018 to 2021 hosted on GitHub
+) # Creating a list of URLs for CHD data CSV files from 2018 to 2021 hosted on GitHub
 
 # Read each CHD data file into a list of data frames
-CHD_data <- lapply(CHD_files, read.csv) # Read each CHD data file into a list of data frames using lapply
+CHD_data <- lapply(CHD_files, read.csv) # Reading each CHD data file into a list of data frames using lapply
 
 # Read Community Health Board (CHB) data from a CSV file from GitHub
 chb_raw <- read.csv(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv'
-) # Read CHB data from a CSV file hosted on GitHub
+) # Reading CHB data from a CSV file hosted on GitHub
 
 # Read Minnesota region data from a CSV file from GitHub
 mn_region_raw <- read.csv(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv'
-) # Read Minnesota region data from a CSV file hosted on GitHub
+) # Reading Minnesota region data from a CSV file hosted on GitHub
 
 # Data Wrangling --------------------------------------------------------------
 # Clean and merge CHD data
 CHD_data <- lapply(CHD_data, function(df) {
-  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA) # Add LocationID if the Latitude column exists
-  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation' # Correct the spelling of Geolocation column if needed
+  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA) # Adding LocationID if the Latitude column exists
+  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation' # Correcting the spelling of Geolocation column if needed
   df
-}) # Clean each CHD data frame by adding LocationID and correcting the Geolocation column name
+}) # Cleaning each CHD data frame by adding LocationID and correcting the Geolocation column name
 
-# Cleaned CHD data frames into one data frame
-CHD_Final <- bind_rows(CHD_data) # Combine all cleaned CHD data frames into one data frame using bind_rows
+# Combine all cleaned CHD data frames into one data frame
+CHD_Final <- bind_rows(CHD_data) # Combining all cleaned CHD data frames into one data frame using bind_rows
 
 # Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |>
   filter(Year == 2021, StateAbbr == "MN") |>
   left_join(mn_region_raw, by = c("LocationName" = "County")) |>
-  left_join(chb_raw, by = c("LocationName" = "County")) 
-# Filter CHD data for the year 2021 and state of Minnesota, then join with region and CHB data
+  left_join(chb_raw, by = c("LocationName" = "County"))
+# Filtering CHD data for the year 2021 and state of Minnesota, then joining with region and CHB data
 
 # Remove "County" from county names in census data
-CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Remove "County" from county names in the census data
+CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Removing "County" from county names in the census data
 
 # Population estimates for CHD in MN
 PopEst_CHDMN <- CensusEstMN |>
-  filter(YEAR == 3) |>
-  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |>
+  filter(YEAR == 3) |> # Filtering census data for the year 2021
+  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Joining with selected CHD locations
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB)
-# Filter census data for the year 2021, join with selected CHD locations, and select relevant columns
+# Selecting relevant columns
 
 # Function to calculate aggregate values
 aggregate_values <- function(df, userInput, filterBy) {
@@ -73,19 +73,41 @@ aggregate_values <- function(df, userInput, filterBy) {
     summarise(Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100,
               Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100,
               Aggregate_High_Confidence_Limit = sum(Aggregate_High_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, .groups = 'drop')
-} # Define a function to calculate aggregate values for CHD data
+} # Defining a function to calculate aggregate values for CHD data
 
 # Pre-calculate Minnesota total
 mn_total <- PopEst_CHDMN |>
-  mutate(StateAbbr = "MN") |>
-  aggregate_values("MN", 'StateAbbr') |>  
-  mutate(across(everything(), ~tidyr::replace_na(., 0))) # Pre-calculate the aggregate CHD data for the state of Minnesota and handle NA values
+  mutate(StateAbbr = "MN") |> # Adding StateAbbr column with value "MN"
+  aggregate_values("MN", 'StateAbbr') |> # Calculating the aggregate CHD data for the state of Minnesota
+  mutate(across(everything(), ~tidyr::replace_na(., 0))) # Handling NA values
+
+# Function to compute y-axis limits -------------------------------------------
+compute_y_axis_limits <- function(data_list) {
+  min_value <- min(sapply(data_list, function(df) min(df$`Low Confidence Limit`, na.rm = TRUE))) # Finding the minimum value across all data frames
+  max_value <- max(sapply(data_list, function(df) max(df$`High Confidence Limit`, na.rm = TRUE))) # Finding the maximum value across all data frames
+  c(min_value, max_value) # Returning the range of y-axis limits
+}
+
+# Function to create ggplot graph ---------------------------------------------
+create_chd_plot <- function(data, y_limits) {
+  ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
+    geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) +
+    geom_point() +
+    ylim(y_limits) +
+    theme_minimal() +
+    theme(
+      axis.title.y = element_blank(), # Removing y-axis title
+      axis.text.x = element_blank(), # Removing x-axis text
+      axis.title.x = element_blank(), # Removing x-axis title
+      legend.text = element_text(size = 12) # Setting legend text size
+    )
+} # Defining a function to create ggplot graphs with consistent formatting
 
 # Define UI -------------------------------------------------------------------
 ui <- dashboardPage(
-  dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title and width
+  dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Creating dashboard header with title and width
   dashboardSidebar(
-    width = 350, # Set sidebar width
+    width = 350, # Setting sidebar width
     selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = "Kittson", width = 350), # County selection input
     selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Year selection input
     selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "Community Health Board"), selected = "All", multiple = FALSE, width = 350), # Comparison selection input
@@ -96,7 +118,7 @@ ui <- dashboardPage(
     )
   ),
   dashboardBody(
-    shinyjs::useShinyjs(), # Enable shinyjs for JavaScript functionality
+    shinyjs::useShinyjs(), # Enabling shinyjs for JavaScript functionality
     tabItems(
       tabItem(
         tabName = "tn_homePage",
@@ -223,7 +245,7 @@ server <- function(input, output, session) {
       session,
       "parGlobal_region",
       choices = unique(mn_region_raw$RegionName)
-    ) # Update region input choices based on unique region names in the data
+    ) # Updating region input choices based on unique region names in the data
   })
   
   observe({
@@ -231,7 +253,7 @@ server <- function(input, output, session) {
       session,
       "parGlobal_chb",
       choices = unique(chb_raw$CHBName)
-    ) # Update CHB input choices based on unique CHB names in the data
+    ) # Updating CHB input choices based on unique CHB names in the data
   })
   
   output$region_narrative <- renderUI({
@@ -242,7 +264,7 @@ server <- function(input, output, session) {
         "<b>", unique(filtered_region$RegionName), " Region</b> is made up of the following counties: ",
         paste(unique(filtered_region$County), collapse = ", "), "."
       )
-    ) # Create HTML content for displaying the region narrative based on the selected county
+    ) # Creating HTML content for displaying the region narrative based on the selected county
   })
   
   output$chb_narrative_01 <- renderUI({
@@ -253,13 +275,13 @@ server <- function(input, output, session) {
         "<b>", unique(filtered_chb$CHBName), " Community Health Board</b> includes: ",
         paste(unique(filtered_chb$County), collapse = ", "), "."
       )
-    ) # Create HTML content for displaying the CHB narrative based on the selected county
+    ) # Creating HTML content for displaying the CHB narrative based on the selected county
   })
   
   # Helper function to highlight selected county in text
   highlight_county <- function(text, selected_county) {
     gsub(selected_county, paste0("<font color='red'>", selected_county, "</font>"), text)
-  } # Define a function to highlight the selected county in red
+  } # Defining a function to highlight the selected county in red
   
   output$region_counties <- renderUI({
     selected_county <- input$parGlobal_county
@@ -273,7 +295,7 @@ server <- function(input, output, session) {
     
     regions_text <- sapply(regions_text, highlight_county, selected_county = selected_county)
     HTML(paste(regions_text, collapse = "<br>"))
-  }) # Render HTML for regions and counties list, highlighting the selected county
+  }) # Rendering HTML for regions and counties list, highlighting the selected county
   
   output$chb_counties <- renderUI({
     selected_county <- input$parGlobal_county
@@ -287,11 +309,11 @@ server <- function(input, output, session) {
     
     chb_text <- sapply(chb_text, highlight_county, selected_county = selected_county)
     HTML(paste(chb_text, collapse = "<br>"))
-  }) # Render HTML for CHBs and counties list, highlighting the selected county
+  }) # Rendering HTML for CHBs and counties list, highlighting the selected county
   
   output$selected_county_title <- renderText({
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", input$parGlobal_county, "County"))
-  }) # Create the title for the selected county
+  }) # Creating the title for the selected county
   
   output$selected_region_title <- renderText({
     county_region <- mn_region_raw |>
@@ -299,11 +321,11 @@ server <- function(input, output, session) {
       pull(Region) |>
       unique()
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_region, "Region"))
-  }) # Create the title for the selected region
+  }) # Creating the title for the selected region
   
   output$selected_state_title <- renderText({
     HTML(paste("Coronary Heart Disease Exposure", "<br/>Minnesota"))
-  }) # Create the title for the state
+  }) # Creating the title for the state
   
   output$selected_chb_title <- renderText({
     county_chb <- chb_raw |>
@@ -311,7 +333,7 @@ server <- function(input, output, session) {
       pull(CHB) |>
       unique()
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_chb, "CHB"))
-  }) # Create the title for the selected CHB
+  }) # Creating the title for the selected CHB
   
   # Reactive Data for plotting--------------
   reactive_CHD_data <- reactive({
@@ -326,7 +348,7 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-  }) # Filter and aggregate CHD data for the selected county and rename columns for the summary table
+  }) # Filtering and aggregating CHD data for the selected county and renaming columns for the summary table
   
   reactive_region_data <- reactive({
     county_region <- mn_region_raw |>
@@ -344,7 +366,7 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-  }) # Filter and aggregate CHD data for the selected region and rename columns for the summary table
+  }) # Filtering and aggregating CHD data for the selected region and renaming columns for the summary table
   
   reactive_chb_data <- reactive({
     county_chb <- chb_raw |>
@@ -362,9 +384,9 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-  }) # Filter and aggregate CHD data for the selected CHB and rename columns for the summary table
+  }) # Filtering and aggregating CHD data for the selected CHB and renaming columns for the summary table
   
-  # Reactive expression to compute y-axis limits
+  # Compute y-axis limits
   y_axis_limits <- reactive({
     data_list <- list(
       reactive_CHD_data(),
@@ -378,57 +400,20 @@ server <- function(input, output, session) {
           `High Confidence Limit` = Aggregate_High_Confidence_Limit
         )
     )
-    
-    min_value <- min(sapply(data_list, function(df) min(df$`Low Confidence Limit`, na.rm = TRUE)))
-    max_value <- max(sapply(data_list, function(df) max(df$`High Confidence Limit`, na.rm = TRUE)))
-    
-    c(min_value, max_value)
-  }) # Compute y-axis limits for all plots, handling NA values
+    compute_y_axis_limits(data_list) # Computing y-axis limits for all plots, handling NA values
+  })
   
   output$plot_county <- renderPlot({
-    data <- reactive_CHD_data()
-    ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
-      geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) +
-      geom_point() +
-      ylim(y_axis_limits()) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(), # Remove the title of the y-axis 
-        axis.text.x = element_blank(), # Remove the title of the x-axis label
-        axis.title.x = element_blank(), # Remove the title of the y-axis
-        legend.text = element_text(size = 12) # Increase the legend font to 12
-      )
-  }) # Render plot for the selected county with customized y-axis, larger legend font, and removed x-axis labels
+    create_chd_plot(reactive_CHD_data(), y_axis_limits()) # Rendering plot for the selected county with customized y-axis limits
+  })
   
   output$plot_chbRegion <- renderPlot({
-    data <- reactive_region_data()
-    ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
-      geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) +
-      geom_point() +
-      ylim(y_axis_limits()) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(), # Remove the title of the y-axis 
-        axis.text.x = element_blank(), # Remove the title of the x-axis label
-        axis.title.x = element_blank(), # Remove the title of the y-axis
-        legend.text = element_text(size = 12) # Increase the legend font to 12
-      )
-  }) # Render plot for the selected region with customized y-axis, larger legend font, and removed x-axis labels
+    create_chd_plot(reactive_region_data(), y_axis_limits()) # Rendering plot for the selected region with customized y-axis limits
+  })
   
   output$plot_chdCHB <- renderPlot({
-    data <- reactive_chb_data()
-    ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
-      geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) +
-      geom_point() +
-      ylim(y_axis_limits()) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(), # Remove the title of the y-axis 
-        axis.text.x = element_blank(), # Remove the title of the x-axis label
-        axis.title.x = element_blank(), # Remove the title of the y-axis
-        legend.text = element_text(size = 12) # Increase the legend font to 12
-      )
-  }) # Render plot for the selected CHB with customized y-axis, larger legend font, and removed x-axis labels
+    create_chd_plot(reactive_chb_data(), y_axis_limits()) # Rendering plot for the selected CHB with customized y-axis limits
+  })
   
   output$plot_state <- renderPlot({
     data <- mn_total |>
@@ -439,31 +424,21 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-    ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
-      geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) +
-      geom_point() +
-      ylim(y_axis_limits()) +
-      theme_minimal() +
-      theme(
-        axis.title.y = element_blank(), # Remove the title of the y-axis 
-        axis.text.x = element_blank(), # Remove the title of the x-axis label
-        axis.title.x = element_blank(), # Remove the title of the y-axis
-        legend.text = element_text(size = 12) # Increase the legend font to 12
-      )
-  }) # Render plot for the state with customized y-axis, larger legend font, and removed x-axis labels
+    create_chd_plot(data, y_axis_limits()) # Rendering plot for the state with customized y-axis limits
+  })
   
   # Summary Tables -----------------------------------------------------------
   output$table_county <- renderTable({
-    reactive_CHD_data()
-  }) # Render summary table for the selected county
+    reactive_CHD_data() # Rendering summary table for the selected county
+  })
   
   output$table_region <- renderTable({
-    reactive_region_data()
-  }) # Render summary table for the selected region
+    reactive_region_data() # Rendering summary table for the selected region
+  })
   
   output$table_chb <- renderTable({
-    reactive_chb_data()
-  }) # Render summary table for the selected CHB
+    reactive_chb_data() # Rendering summary table for the selected CHB
+  })
   
   output$table_state <- renderTable({
     mn_total |>
@@ -474,8 +449,8 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-  }) # Render summary table for the state with renamed columns
+  }) # Rendering summary table for the state with renamed columns
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server) # Run the Shiny application 
+shinyApp(ui = ui, server = server) # Running the Shiny application 
