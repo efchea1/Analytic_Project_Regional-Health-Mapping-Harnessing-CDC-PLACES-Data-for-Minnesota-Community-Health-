@@ -170,7 +170,7 @@ ui <- dashboardPage(
                   solidHeader = TRUE, # Solid header
                   width = NULL, # Full width
                   plotOutput("plot_state", height = "200px"), # State plot output
-                  tableOutput("table_state") # state table output
+                  tableOutput("table_state") # State table output
                 )
               ),
               column(
@@ -181,7 +181,7 @@ ui <- dashboardPage(
                   solidHeader = TRUE, # Solid header
                   width = NULL, # Full width
                   plotOutput("plot_chbRegion", height = "200px"), # Region plot output
-                  tableOutput("table_region") # region table output
+                  tableOutput("table_region") # Region table output
                 )
               )
             ),
@@ -205,7 +205,7 @@ ui <- dashboardPage(
                   solidHeader = TRUE, # Solid header
                   width = NULL, # Full width
                   plotOutput("plot_county", height = "200px"), # County plot output
-                  tableOutput("table_county") # county table output
+                  tableOutput("table_county") # County table output
                 )
               )
             )
@@ -392,8 +392,13 @@ server <- function(input, output, session) {
       geom_point() +
       ylim(y_axis_limits()) +
       theme_minimal() +
-      theme(axis.title.y = element_blank())
-  }) # Render plot for the selected county with customized y-axis
+      theme(
+        axis.title.y = element_blank(), # Remove the title of the y-axis 
+        axis.text.x = element_blank(), # Remove the title of the x-axis label
+        axis.title.x = element_blank(), # Remove the title of the y-axis
+        legend.text = element_text(size = 12) # Increase the legend font to 12
+      )
+  }) # Render plot for the selected county with customized y-axis, larger legend font, and removed x-axis labels
   
   output$plot_chbRegion <- renderPlot({
     data <- reactive_region_data()
@@ -402,8 +407,13 @@ server <- function(input, output, session) {
       geom_point() +
       ylim(y_axis_limits()) +
       theme_minimal() +
-      theme(axis.title.y = element_blank())
-  }) # Render plot for the selected region with customized y-axis
+      theme(
+        axis.title.y = element_blank(), # Remove the title of the y-axis 
+        axis.text.x = element_blank(), # Remove the title of the x-axis label
+        axis.title.x = element_blank(), # Remove the title of the y-axis
+        legend.text = element_text(size = 12) # Increase the legend font to 12
+      )
+  }) # Render plot for the selected region with customized y-axis, larger legend font, and removed x-axis labels
   
   output$plot_chdCHB <- renderPlot({
     data <- reactive_chb_data()
@@ -412,8 +422,13 @@ server <- function(input, output, session) {
       geom_point() +
       ylim(y_axis_limits()) +
       theme_minimal() +
-      theme(axis.title.y = element_blank())
-  }) # Render plot for the selected CHB with customized y-axis
+      theme(
+        axis.title.y = element_blank(), # Remove the title of the y-axis 
+        axis.text.x = element_blank(), # Remove the title of the x-axis label
+        axis.title.x = element_blank(), # Remove the title of the y-axis
+        legend.text = element_text(size = 12) # Increase the legend font to 12
+      )
+  }) # Render plot for the selected CHB with customized y-axis, larger legend font, and removed x-axis labels
   
   output$plot_state <- renderPlot({
     data <- mn_total |>
@@ -429,8 +444,13 @@ server <- function(input, output, session) {
       geom_point() +
       ylim(y_axis_limits()) +
       theme_minimal() +
-      theme(axis.title.y = element_blank())
-  }) # Render plot for the state with customized y-axis and renamed columns
+      theme(
+        axis.title.y = element_blank(), # Remove the title of the y-axis 
+        axis.text.x = element_blank(), # Remove the title of the x-axis label
+        axis.title.x = element_blank(), # Remove the title of the y-axis
+        legend.text = element_text(size = 12) # Increase the legend font to 12
+      )
+  }) # Render plot for the state with customized y-axis, larger legend font, and removed x-axis labels
   
   # Summary Tables -----------------------------------------------------------
   output$table_county <- renderTable({
@@ -458,4 +478,4 @@ server <- function(input, output, session) {
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server) # Run the Shiny application
+shinyApp(ui = ui, server = server) # Run the Shiny application 
