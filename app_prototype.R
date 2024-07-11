@@ -6,7 +6,7 @@ library(ggplot2)          # ggplot2 package for creating graphics
 library(dplyr)            # dplyr package for data manipulation
 library(shinydashboard)   # shinydashboard package for creating dashboards
 library(shinyjs)          # shinyjs package for adding JavaScript functionality
-library(tidyr)            # tidyr package for data manipulation 
+library(tidyr)            # tidyr package for tidyr package for handling missing values  
 
 # Load census estimate data for Minnesota from GitHub -------------------------
 CensusEstMN <- read.csv(
