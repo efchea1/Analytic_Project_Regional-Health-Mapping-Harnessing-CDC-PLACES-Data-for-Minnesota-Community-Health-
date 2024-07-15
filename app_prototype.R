@@ -108,141 +108,147 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
   ) # Generate narrative text for comparing county data with other regions (state, region, CHB) narrative
 }
 
+# Bookmarking Functionality ---------------------------------------------------
+enableBookmarking(store = "url")
+
 # Define UI -------------------------------------------------------------------
-ui <- dashboardPage(
-  dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
-  dashboardSidebar(
-    width = 350,
-    selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = "Kittson", width = 350), # Create dropdown for selecting county
-    selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Create dropdown for selecting year
-    selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "CHB"), selected = "All", multiple = FALSE, width = 350), # Create dropdown for selecting comparison type
-    sidebarMenu(
-      menuItem("Home", tabName = "tn_homePage"), # Create menu item for Home page
-      menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"), # Create menu item for Region & CHB Definition
-      menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease") # Create menu item for Coronary Heart Disease
-    )
-  ),
-  dashboardBody(
-    shinyjs::useShinyjs(), # Enable shinyjs functionality
-    tabItems(
-      tabItem(
-        tabName = "tn_homePage",
-        tabsetPanel(
-          tabPanel(
-            "Home Page",
-            fluidRow(
-              column(
-                width = 12,
-                h1("Welcome to the CDC PLACES MN Region Dashboard"), # Display welcome message
-                h4("This Shiny application replicates the work represented ", tags$a(href="https://data.web.health.state.mn.us/web/mndata/", "here!", target= "_blank")), # Link to external site
-                tags$h4("Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of MN or even the US."), # Description of the project
-                tags$h3("Those involved with this project are:"), # Project participants
-                tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # Participant 1
-                tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher") # Participant 2
+ui <- function(request) {
+  dashboardPage(
+    dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
+    dashboardSidebar(
+      width = 350,
+      div(style = "margin-bottom: 10px;", bookmarkButton(label = "Bookmark")),
+      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = "Kittson", width = 350), # Create dropdown for selecting county
+      selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Create dropdown for selecting year
+      selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "CHB"), selected = "All", multiple = FALSE, width = 350), # Create dropdown for selecting comparison type
+      sidebarMenu(
+        menuItem("Home", tabName = "tn_homePage"), # Create menu item for Home page
+        menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"), # Create menu item for Region & CHB Definition
+        menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease") # Create menu item for Coronary Heart Disease
+      )
+    ),
+    dashboardBody(
+      shinyjs::useShinyjs(), # Enable shinyjs functionality
+      tabItems(
+        tabItem(
+          tabName = "tn_homePage",
+          tabsetPanel(
+            tabPanel(
+              "Home Page",
+              fluidRow(
+                column(
+                  width = 12,
+                  h1("Welcome to the CDC PLACES MN Region Dashboard"), # Display welcome message
+                  h4("This Shiny application replicates the work represented ", tags$a(href="https://data.web.health.state.mn.us/web/mndata/", "here!", target= "_blank")), # Link to external site
+                  tags$h4("Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of MN or even the US."), # Description of the project
+                  tags$h3("Those involved with this project are:"), # Project participants
+                  tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # Participant 1
+                  tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher") # Participant 2
+                )
               )
             )
           )
-        )
-      ),
-      tabItem(
-        tabName = "tn_regionChbDefinitions",
-        fluidRow(
-          column(
-            width = 12,
-            tabsetPanel(
-              tabPanel(
-                "Region/CHB",
-                fluidRow(
-                  column(
-                    width = 12,
-                    h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")), # Explanation of functionality
-                    h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."), # Note on disabled filters
-                    h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board."), # Purpose of the tab
-                    tags$hr(style = "border-top: 1px solid #ccc; margin-top: 20px; margin-bottom: 20px;") # Horizontal rule for separation
-                  )
-                ),
-                fluidRow(
-                  column(6, uiOutput("region_narrative", style = "font-size: 20px;")), # Region narrative output
-                  column(6, uiOutput("chb_narrative_01", style = "font-size: 20px;")) # CHB narrative output
-                ),
-                fluidRow(
-                  column(
-                    width = 12,
-                    h3("Regions and Counties"), # Regions and Counties heading
-                    uiOutput("region_counties") # UI output for regions and counties list
+        ),
+        tabItem(
+          tabName = "tn_regionChbDefinitions",
+          fluidRow(
+            column(
+              width = 12,
+              tabsetPanel(
+                tabPanel(
+                  "Region/CHB",
+                  fluidRow(
+                    column(
+                      width = 12,
+                      h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")), # Explanation of functionality
+                      h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."), # Note on disabled filters
+                      h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board."), # Purpose of the tab
+                      tags$hr(style = "border-top: 1px solid #ccc; margin-top: 20px; margin-bottom: 20px;") # Horizontal rule for separation
+                    )
                   ),
-                  column(
-                    width = 12,
-                    h3("Community Health Boards"), # Community Health Boards heading
-                    uiOutput("chb_counties") # UI output for CHB and counties list
+                  fluidRow(
+                    column(6, uiOutput("region_narrative", style = "font-size: 20px;")), # Region narrative output
+                    column(6, uiOutput("chb_narrative_01", style = "font-size: 20px;")) # CHB narrative output
+                  ),
+                  fluidRow(
+                    column(
+                      width = 12,
+                      h3("Regions and Counties"), # Regions and Counties heading
+                      uiOutput("region_counties") # UI output for regions and counties list
+                    ),
+                    column(
+                      width = 12,
+                      h3("Community Health Boards"), # Community Health Boards heading
+                      uiOutput("chb_counties") # UI output for CHB and counties list
+                    )
                   )
                 )
               )
             )
           )
-        )
-      ),
-      tabItem(
-        tabName = "tn_coronaryHeartDisease",
-        tabsetPanel(
-          id = "tpId_coronaryHeartDisease",
-          tabPanel(
-            "Adults>=18 CHD Exposure",
-            fluidRow(
-              column(
-                width = 12,
-                uiOutput("narrative_text", style = "font-size: 16px;") # Display narrative text above the graphs
-              )
-            ),
-            fluidRow(
-              column(
-                width = 6,
-                box(
-                  title = uiOutput("selected_state_title"), # State title output
-                  status = "primary", # Box status
-                  solidHeader = TRUE, # Solid header
-                  collapsible = TRUE, # Collapsible box
-                  width = NULL, # Full width
-                  plotOutput("plot_state", height = "200px"), # State plot output
-                  tableOutput("table_state") # State table output
+        ),
+        tabItem(
+          tabName = "tn_coronaryHeartDisease",
+          tabsetPanel(
+            id = "tpId_coronaryHeartDisease",
+            tabPanel(
+              "Adults>=18 CHD Exposure",
+              fluidRow(
+                column(
+                  width = 12,
+                  uiOutput("narrative_text", style = "font-size: 16px;") # Display narrative text above the graphs
                 )
               ),
-              column(
-                width = 6,
-                box(
-                  title = uiOutput("selected_region_title"), # Region title output
-                  status = "primary", # Box status. "primary": Blue (sometimes dark blue); "success": Green; "info": Blue; "warning": Orange; "danger": Red; NULL: no background color
-                  solidHeader = TRUE, # Solid header
-                  collapsible = TRUE, # Collapsible box
-                  width = NULL, # Full width
-                  plotOutput("plot_chbRegion", height = "200px"), # Region plot output
-                  tableOutput("table_region") # Region table output
-                )
-              )
-            ),
-            fluidRow(
-              column(
-                width = 6,
-                box(
-                  title = uiOutput("selected_chb_title"), # CHB title output
-                  status = "primary", # Box status
-                  solidHeader = TRUE, # Solid header
-                  collapsible = TRUE, # Collapsible box
-                  width = NULL, # Full width
-                  plotOutput("plot_chdCHB", height = "200px"), # CHB plot output
-                  tableOutput("table_chb") # CHB table output
+              fluidRow(
+                column(
+                  width = 6,
+                  box(
+                    title = uiOutput("selected_state_title"), # State title output
+                    status = "primary", # Box status
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotOutput("plot_state", height = "200px"), # State plot output
+                    tableOutput("table_state") # State table output
+                  )
+                ),
+                column(
+                  width = 6,
+                  box(
+                    title = uiOutput("selected_region_title"), # Region title output
+                    status = "primary", # Box status. "primary": Blue (sometimes dark blue); "success": Green; "info": Blue; "warning": Orange; "danger": Red; NULL: no background color
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotOutput("plot_chbRegion", height = "200px"), # Region plot output
+                    tableOutput("table_region") # Region table output
+                  )
                 )
               ),
-              column(
-                width = 6,
-                box(
-                  title = uiOutput("selected_county_title"), # County title output
-                  status = "primary", # Box status
-                  solidHeader = TRUE, # Solid header
-                  collapsible = TRUE, # Collapsible box
-                  width = NULL, # Full width
-                  plotOutput("plot_county", height = "200px"), # County plot output
-                  tableOutput("table_county") # County table output
+              fluidRow(
+                column(
+                  width = 6,
+                  box(
+                    title = uiOutput("selected_chb_title"), # CHB title output
+                    status = "primary", # Box status
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotOutput("plot_chdCHB", height = "200px"), # CHB plot output
+                    tableOutput("table_chb") # CHB table output
+                  )
+                ),
+                column(
+                  width = 6,
+                  box(
+                    title = uiOutput("selected_county_title"), # County title output
+                    status = "primary", # Box status
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotOutput("plot_county", height = "200px"), # County plot output
+                    tableOutput("table_county") # County table output
+                  )
                 )
               )
             )
@@ -251,7 +257,7 @@ ui <- dashboardPage(
       )
     )
   )
-)
+}
 
 # Server Logic ----------------------------------------------------------------
 server <- function(input, output, session) {
