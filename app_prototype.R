@@ -1,15 +1,18 @@
+
 # Shiny Dashboard
 
 # Load Packages ---------------------------------------------------------------
-library(shiny)
-library(ggplot2)
-library(dplyr)
-library(shinydashboard)
-library(shinyjs)
-library(tidyr)
+library(shiny)            # shiny package for building interactive web applications
+library(ggplot2)          # ggplot2 package for creating graphics
+library(dplyr)            # dplyr package for data manipulation
+library(shinydashboard)   # shinydashboard package for creating dashboards
+library(shinyjs)          # shinyjs package for adding JavaScript functionality
+library(tidyr)            # tidyr package for handling missing values
 
 # Load census estimate data for Minnesota from GitHub -------------------------
-CensusEstMN <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv')
+CensusEstMN <- read.csv(
+  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv'
+) # Reading census estimate data for Minnesota from a CSV file hosted on GitHub
 
 # List of URLs from GitHub for Coronary Heart Disease (CHD) data CSV files from 2018 to 2021
 CHD_files <- list(
@@ -17,42 +20,48 @@ CHD_files <- list(
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2019.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2020.csv',
   'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2021.csv'
-)
+) # Creating a list of URLs for CHD data CSV files from 2018 to 2021 hosted on GitHub
 
 # Read each CHD data file into a list of data frames
-CHD_data <- lapply(CHD_files, read.csv)
+CHD_data <- lapply(CHD_files, read.csv) # Reading each CHD data file into a list of data frames using lapply
 
 # Read Community Health Board (CHB) data from a CSV file from GitHub
-chb_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv')
+chb_raw <- read.csv(
+  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv'
+) # Reading CHB data from a CSV file hosted on GitHub
 
 # Read Minnesota region data from a CSV file from GitHub
-mn_region_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv')
+mn_region_raw <- read.csv(
+  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv'
+) # Reading Minnesota region data from a CSV file hosted on GitHub
 
 # Data Wrangling --------------------------------------------------------------
 # Clean and merge CHD data
 CHD_data <- lapply(CHD_data, function(df) {
-  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA)
-  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation'
+  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA) # Adding LocationID if the Latitude column exists
+  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation' # Correcting the spelling of Geolocation column if needed
   df
-})
+}) # Cleaning each CHD data frame by adding LocationID and correcting the Geolocation column name
 
 # Combine all cleaned CHD data frames into one data frame
-CHD_Final <- bind_rows(CHD_data)
+CHD_Final <- bind_rows(CHD_data) # Combining all cleaned CHD data frames into one data frame using bind_rows
 
 # Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |>
   filter(Year == 2021, StateAbbr == "MN") |>
   left_join(mn_region_raw, by = c("LocationName" = "County")) |>
   left_join(chb_raw, by = c("LocationName" = "County"))
+# Filtering CHD data for the year 2021 and state of Minnesota, then joining with region and CHB data
 
 # Remove "County" from county names in census data
-CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
+CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Removing "County" from county names in the census data
 
 # Population estimates for CHD in MN
 PopEst_CHDMN <- CensusEstMN |>
-  filter(YEAR == 3) |>
-  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |>
+  filter(YEAR == 3) |> # Filtering census data for the year 2021
+  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Joining with selected CHD locations
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB)
+# Selecting relevant columns
 
 # Function to calculate aggregate values
 aggregate_values <- function(df, userInput, filterBy) {
@@ -65,20 +74,21 @@ aggregate_values <- function(df, userInput, filterBy) {
     summarise(Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100,
               Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100,
               Aggregate_High_Confidence_Limit = sum(Aggregate_High_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, .groups = 'drop')
-}
+} # Defining a function to calculate aggregate values for CHD data
 
 # Pre-calculate Minnesota total
 mn_total <- PopEst_CHDMN |>
-  mutate(StateAbbr = "MN") |>
-  aggregate_values("MN", 'StateAbbr') |>
-  mutate(across(everything(), ~tidyr::replace_na(., 0)))
+  mutate(StateAbbr = "MN") |> # Adding StateAbbr column with value "MN"
+  aggregate_values("MN", 'StateAbbr') |> # Calculating the aggregate CHD data for the state of Minnesota
+  mutate(across(everything(), ~tidyr::replace_na(., 0))) # Handling NA values
 
 # Function to compute y-axis limits -------------------------------------------
 compute_y_axis_limits <- function(data_list) {
-  min_value <- min(sapply(data_list, function(df) min(df$`Low Confidence Limit`, na.rm = TRUE)))
-  max_value <- max(sapply(data_list, function(df) max(df$`High Confidence Limit`, na.rm = TRUE)))
-  c(min_value, max_value)
-}
+  min_value <- min(sapply(data_list, function(df) min(df$`Low Confidence Limit`, na.rm = TRUE))) # Finding the minimum value across all data frames
+  max_value <- max(sapply(data_list, function(df) max(df$`High Confidence Limit`, na.rm = TRUE))) # Finding the maximum value across all data frames
+  c(min_value, max_value) # Returning the range of y-axis limits
+} # This helps fixing the y-axis to particular values because at first the y-axis of the four graphs had different values and it was changing.
+
 
 # Function to create ggplot graph ---------------------------------------------
 chd_plot <- function(data, y_limits, title = NULL) {
@@ -89,13 +99,12 @@ chd_plot <- function(data, y_limits, title = NULL) {
     labs(title = title) +
     theme_minimal() +
     theme(
-      axis.title.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.title.x = element_blank(),
-      legend.text = element_text(size = 12),
-      plot.title = element_text(hjust = 0.5, size = 14)
+      axis.title.y = element_blank(), # Removing y-axis title
+      axis.text.x = element_blank(), # Removing x-axis text
+      axis.title.x = element_blank(), # Removing x-axis title
+      legend.text = element_text(size = 12), # Setting legend text size
     )
-}
+} # Defining a function to create ggplot graphs with consistent formatting
 
 # Define UI -------------------------------------------------------------------
 ui <- dashboardPage(
@@ -179,6 +188,12 @@ ui <- dashboardPage(
             "Adults>=18 CHD Exposure",
             fluidRow(
               column(
+                width = 12,
+                uiOutput("narrative_text")
+              )
+            ),
+            fluidRow(
+              column(
                 width = 6,
                 box(
                   title = uiOutput("selected_state_title"),
@@ -227,12 +242,6 @@ ui <- dashboardPage(
                   plotOutput("plot_county", height = "200px"),
                   tableOutput("table_county")
                 )
-              )
-            ),
-            fluidRow(
-              column(
-                width = 12,
-                uiOutput("narrative_text")
               )
             )
           )
@@ -315,7 +324,7 @@ server <- function(input, output, session) {
   })
   
   output$selected_county_title <- renderText({
-    HTML(paste("Coronary Heart Disease Exposure", "<br/><font color='red'>", input$parGlobal_county, " County</font>"))
+    HTML(paste("Coronary Heart Disease Exposure", "<br/>", input$parGlobal_county, " County"))
   })
   
   output$selected_region_title <- renderText({
@@ -323,11 +332,11 @@ server <- function(input, output, session) {
       filter(County == input$parGlobal_county) |>
       pull(Region) |>
       unique()
-    HTML(paste("Coronary Heart Disease Exposure", "<br/><font color='red'>", county_region, " Region</font>"))
+    HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_region, " Region"))
   })
   
   output$selected_state_title <- renderText({
-    HTML(paste("Coronary Heart Disease Exposure", "<br/><font color='red'>Minnesota</font>"))
+    HTML(paste("Coronary Heart Disease Exposure", "<br/>Minnesota"))
   })
   
   output$selected_chb_title <- renderText({
@@ -335,7 +344,7 @@ server <- function(input, output, session) {
       filter(County == input$parGlobal_county) |>
       pull(CHB) |>
       unique()
-    HTML(paste("Coronary Heart Disease Exposure", "<br/><font color='red'>", county_chb, " CHB</font>"))
+    HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_chb, " CHB"))
   })
   
   # Reactive Data for plotting--------------
@@ -406,15 +415,20 @@ server <- function(input, output, session) {
   })
   
   output$plot_county <- renderPlot({
-    chd_plot(reactive_county_data(), y_axis_limits(), title = paste("<font color='red'>", input$parGlobal_county, " County</font>"))
+    chd_plot(reactive_county_data(),
+             y_axis_limits(),
+             title = paste(input$parGlobal_county))
   })
   
   output$plot_chbRegion <- renderPlot({
-    chd_plot(reactive_region_data(), y_axis_limits(), title = paste("<font color='red'>", unique(mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region)), " Region</font>"))
+    chd_plot(reactive_region_data(), y_axis_limits(), title = paste(unique(mn_region_raw |> filter(County == input$parGlobal_county))))
   })
   
   output$plot_chdCHB <- renderPlot({
-    chd_plot(reactive_chb_data(), y_axis_limits(), title = paste("<font color='red'>", unique(chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB)), " CHB</font>"))
+    chd_plot(reactive_chb_data(), y_axis_limits(),
+             title = paste(unique(chb_raw |>
+                                    filter(County == input$parGlobal_county) |>
+                                    pull(CHB))))
   })
   
   output$plot_state <- renderPlot({
@@ -426,7 +440,7 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
-    chd_plot(data, y_axis_limits(), title = "<font color='red'>Minnesota</font>")
+    chd_plot(data, y_axis_limits())
   })
   
   output$table_county <- renderTable({
@@ -470,64 +484,63 @@ server <- function(input, output, session) {
     year <- "2021"
     highlighted_year <- highlight_text(year, year)
     highlighted_county <- highlight_text(county, county)
-    highlighted_region <- highlight_text(unique(mn_region_raw |> filter(County == county) |> pull(Region)), unique(mn_region_raw |> filter(County == county) |> pull(Region)))
-    highlighted_chb <- highlight_text(unique(chb_raw |> filter(County == county) |> pull(CHB)), unique(chb_raw |> filter(County == county) |> pull(CHB)))
-    highlighted_state <- highlight_text("Minnesota", "Minnesota")
+    highlighted_age_adjusted_prevalence <- highlight_text("age-adjusted prevalence", "age-adjusted prevalence")
+    highlighted_crude_prevalence <- highlight_text("crude prevalence", "crude prevalence")
     
     age_adjusted_narrative <- NULL
     crude_prevalence_narrative <- NULL
     
     if (comparison == "All") {
       age_adjusted_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had an age-adjusted prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2),
-        "%), compared to the region's ", round(region_data$`Point Estimate`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2),
-        "%), the CHB's ", round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2),
-        "%), and the state's ", round(state_data$`Point Estimate`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had an ", highlighted_age_adjusted_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, which is <b>less than</b> the region's <b>",
+        round(region_data$`Point Estimate`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, the CHB's <b>",
+        round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, and the state's <b>",
+        round(state_data$`Point Estimate`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>."
       )
       
       crude_prevalence_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had a crude prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2),
-        "%), which is less than the region's ", round(region_data$`Point Estimate`[region_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2),
-        "%), less than the CHB's ", round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2),
-        "%), and less than the state's ", round(state_data$`Point Estimate`[state_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had a ", highlighted_crude_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), ")</b>, which is <b>less than</b> the region's <b>",
+        round(region_data$`Point Estimate`[region_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), ")</b>, the CHB's <b>",
+        round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), ")</b>, and the state's <b>",
+        round(state_data$`Point Estimate`[state_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), ")</b>."
       )
     } else if (comparison == "State") {
       age_adjusted_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had an age-adjusted prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2),
-        "%), compared to the state's ", round(state_data$`Point Estimate`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had an ", highlighted_age_adjusted_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, compared to the state's <b>",
+        round(state_data$`Point Estimate`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>."
       )
       
       crude_prevalence_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had a crude prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2),
-        "%), compared to the state's ", round(state_data$`Point Estimate`[state_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had a ", highlighted_crude_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), ")</b>, compared to the state's <b>",
+        round(state_data$`Point Estimate`[state_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(state_data$`Low Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), "-", round(state_data$`High Confidence Limit`[state_data$`Data Type` == "Crude prevalence"], 2), ")</b>."
       )
     } else if (comparison == "Region") {
       age_adjusted_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had an age-adjusted prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2),
-        "%), compared to the region's ", round(region_data$`Point Estimate`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had an ", highlighted_age_adjusted_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, compared to the region's <b>",
+        round(region_data$`Point Estimate`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>."
       )
       
       crude_prevalence_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had a crude prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2),
-        "%), compared to the region's ", round(region_data$`Point Estimate`[region_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had a ", highlighted_crude_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), ")</b>, compared to the region's <b>",
+        round(region_data$`Point Estimate`[region_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), ")</b>."
       )
     } else if (comparison == "CHB") {
       age_adjusted_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had an age-adjusted prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2),
-        "%), compared to the CHB's ", round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had an ", highlighted_age_adjusted_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, compared to the CHB's <b>",
+        round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>."
       )
       
       crude_prevalence_narrative <- paste0(
-        "In ", highlighted_year, ", ", highlighted_county, " had a crude prevalence of ",
-        round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2),
-        "%), compared to the CHB's ", round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "%)."
+        "In ", highlighted_year, ", ", highlighted_county, " had a ", highlighted_crude_prevalence, " of ",
+        "<b>", round(county_data$`Point Estimate`[county_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), "-", round(county_data$`High Confidence Limit`[county_data$`Data Type` == "Crude prevalence"], 2), ")</b>, compared to the CHB's <b>",
+        round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), ")</b>."
       )
     }
     
