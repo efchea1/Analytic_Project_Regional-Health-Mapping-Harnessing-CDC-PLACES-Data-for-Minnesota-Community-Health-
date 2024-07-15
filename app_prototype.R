@@ -251,7 +251,7 @@ server <- function(input, output, session) {
       choices = unique(mn_region_raw$RegionName)
     )
   })
-
+  
   observe({
     updateSelectInput(
       session,
@@ -259,7 +259,7 @@ server <- function(input, output, session) {
       choices = unique(chb_raw$CHBName)
     )
   })
-
+  
   output$region_narrative <- renderUI({
     filtered_region <- mn_region_raw |>
       filter(County == input$parGlobal_county)
@@ -270,7 +270,7 @@ server <- function(input, output, session) {
       )
     )
   })
-
+  
   output$chb_narrative_01 <- renderUI({
     filtered_chb <- chb_raw |>
       filter(County == input$parGlobal_county)
@@ -281,43 +281,43 @@ server <- function(input, output, session) {
       )
     )
   })
-
+  
   highlight_county <- function(text, selected_county) {
     gsub(selected_county, paste0("<font color='red'>", selected_county, "</font>"), text)
   }
-
+  
   output$region_counties <- renderUI({
     selected_county <- input$parGlobal_county
     regions <- mn_region_raw |>
       group_by(Region) |>
       summarise(Counties = paste(County, collapse = ", "))
-
+    
     regions_text <- regions |>
       mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) |>
       pull(Text)
-
+    
     regions_text <- sapply(regions_text, highlight_county, selected_county = selected_county)
     HTML(paste(regions_text, collapse = "<br>"))
   })
-
+  
   output$chb_counties <- renderUI({
     selected_county <- input$parGlobal_county
     chbs <- chb_raw |>
       group_by(CHB) |>
       summarise(Counties = paste(County, collapse = ", "))
-
+    
     chb_text <- chbs |>
       mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) |>
       pull(Text)
-
+    
     chb_text <- sapply(chb_text, highlight_county, selected_county = selected_county)
     HTML(paste(chb_text, collapse = "<br>"))
   })
-
+  
   output$selected_county_title <- renderText({
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", input$parGlobal_county, "County"))
   })
-
+  
   output$selected_region_title <- renderText({
     county_region <- mn_region_raw |>
       filter(County == input$parGlobal_county) |>
@@ -325,11 +325,11 @@ server <- function(input, output, session) {
       unique()
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_region, "Region"))
   })
-
+  
   output$selected_state_title <- renderText({
     HTML(paste("Coronary Heart Disease Exposure", "<br/>Minnesota"))
   })
-
+  
   output$selected_chb_title <- renderText({
     county_chb <- chb_raw |>
       filter(County == input$parGlobal_county) |>
@@ -337,7 +337,7 @@ server <- function(input, output, session) {
       unique()
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_chb, "CHB"))
   })
-
+  
   # Reactive Data for plotting--------------
   reactive_county_data <- reactive({
     PopEst_CHDMN |>
@@ -352,7 +352,7 @@ server <- function(input, output, session) {
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
-
+  
   reactive_region_data <- reactive({
     county_region <- mn_region_raw |>
       filter(County == input$parGlobal_county) |>
@@ -370,7 +370,7 @@ server <- function(input, output, session) {
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
-
+  
   reactive_chb_data <- reactive({
     county_chb <- chb_raw |>
       filter(County == input$parGlobal_county) |>
@@ -388,7 +388,7 @@ server <- function(input, output, session) {
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
-
+  
   y_axis_limits <- reactive({
     data_list <- list(
       reactive_county_data(),
@@ -404,19 +404,19 @@ server <- function(input, output, session) {
     )
     compute_y_axis_limits(data_list)
   })
-
+  
   output$plot_county <- renderPlot({
     chd_plot(reactive_county_data(), y_axis_limits(), title = paste(input$parGlobal_county, "County"))
   })
-
+  
   output$plot_chbRegion <- renderPlot({
     chd_plot(reactive_region_data(), y_axis_limits(), title = paste(unique(mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region)), "Region"))
   })
-
+  
   output$plot_chdCHB <- renderPlot({
     chd_plot(reactive_chb_data(), y_axis_limits(), title = paste(unique(chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB)), "CHB"))
   })
-
+  
   output$plot_state <- renderPlot({
     data <- mn_total |>
       rename(
@@ -428,19 +428,19 @@ server <- function(input, output, session) {
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
     chd_plot(data, y_axis_limits(), title = "Minnesota")
   })
-
+  
   output$table_county <- renderTable({
     reactive_county_data()
   })
-
+  
   output$table_region <- renderTable({
     reactive_region_data()
   })
-
+  
   output$table_chb <- renderTable({
     reactive_chb_data()
   })
-
+  
   output$table_state <- renderTable({
     mn_total |>
       rename(
@@ -451,11 +451,11 @@ server <- function(input, output, session) {
       ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
-
+  
   output$narrative_text <- renderUI({
     county_data <- reactive_county_data() |>
       filter(`Data Type` == "Crude prevalence")
-
+    
     state_data <- mn_total |>
       rename(
         `Data Type` = Data_Value_Type,
@@ -464,19 +464,19 @@ server <- function(input, output, session) {
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
       ) |>
       filter(`Data Type` == "Crude prevalence")
-
+    
     region_data <- reactive_region_data() |>
       filter(`Data Type` == "Crude prevalence")
-
+    
     chb_data <- reactive_chb_data() |>
       filter(`Data Type` == "Crude prevalence")
-
+    
     county <- input$parGlobal_county
-
+    
     comparison <- input$par_chdStateRegionChb
-
+    
     narrative <- NULL
-
+    
     if (comparison == "All") {
       narrative <- paste0(
         "In 2021, ", county, " had a crude prevalence of ",
@@ -504,10 +504,10 @@ server <- function(input, output, session) {
         "%), compared to the CHB's ", round(chb_data$`Point Estimate`, 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`, 2), "-", round(chb_data$`High Confidence Limit`, 2), "%)."
       )
     }
-
+    
     HTML(narrative)
   })
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server) 
