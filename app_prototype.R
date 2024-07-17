@@ -104,13 +104,21 @@ chd_plot <- function(data, y_limits) {
 
 # Function to generate narrative text -----------------------------------------
 generate_narrative <- function(county_data, comparison_data, comparison_name, highlighted_year, highlighted_county, data_type) {
-  paste0(
+  narrative <- paste0(
     "In ", highlighted_year, ", <b>adults aged ≥18 years</b> in ", highlighted_county, " had a <b>coronary heart disease</b> ",
     data_type, " of <b>", round(county_data$`Point Estimate`, 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`, 2), "-",
     round(county_data$`High Confidence Limit`, 2), ")</b>, compared to the ", comparison_name, "'s <b>",
     round(comparison_data$`Point Estimate`, 2), "% (95% CI: ", round(comparison_data$`Low Confidence Limit`, 2), "-",
     round(comparison_data$`High Confidence Limit`, 2), ")</b>."
   )
+  
+  if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit` || county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
+    narrative <- paste0(narrative, " This difference is <b>statistically significant</b>.")
+  } else {
+    narrative <- paste0(narrative, " This difference is <b>not statistically significant</b>.")
+  }
+  
+  narrative
 }
 
 # Bookmarking Functionality ---------------------------------------------------
@@ -222,7 +230,7 @@ ui <- function(request) {
                   width = 6,
                   box(
                     title = uiOutput("selected_region_title"), # Region title output
-                    status = "primary", # Box status. "primary": Blue (sometimes dark blue); "success": Green; "info": Blue; "warning": Orange; "danger": Red; NULL: no background color
+                    status = "primary", # Box status
                     solidHeader = TRUE, # Solid header
                     collapsible = TRUE, # Collapsible box
                     width = NULL, # Full width
@@ -540,4 +548,4 @@ server <- function(input, output, session) {
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server) # Run the Shiny application 
+shinyApp(ui = ui, server = server) # Run the Shiny application
