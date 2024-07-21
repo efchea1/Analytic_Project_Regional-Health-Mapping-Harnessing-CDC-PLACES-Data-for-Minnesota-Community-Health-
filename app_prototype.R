@@ -1,12 +1,12 @@
 # Shiny Dashboard -------------------------------------------------------------
 
 # Load necessary libraries for the application
-library(shiny)            # shiny package for building interactive web applications
-library(ggplot2)          # ggplot2 package for creating graphics
-library(dplyr)            # dplyr package for data manipulation
-library(shinydashboard)   # shinydashboard package for creating dashboards
-library(shinyjs)          # shinyjs package for adding JavaScript functionality
-library(tidyr)            # tidyr package for tidying and handling missing values
+library(shiny)            # For building interactive web applications
+library(ggplot2)          # For creating graphics
+library(dplyr)            # For data manipulation
+library(shinydashboard)   # For creating dashboards
+library(shinyjs)          # For adding JavaScript functionality
+library(tidyr)            # For tidying and handling missing values
 
 # Load Data from GitHub -------------------------------------------------------
 # Read census estimate data for Minnesota from a CSV file hosted on GitHub
@@ -32,34 +32,35 @@ mn_region_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Pub
 # Data Wrangling --------------------------------------------------------------
 # Clean and merge CHD data
 CHD_data <- lapply(CHD_data, function(df) {
-  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA) # Add LocationID if the Latitude column exists
-  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation' # Correct the spelling of Geolocation column if needed
+  # If 'Latitude' column exists, create 'LocationID' using 'Latitude'
+  df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA)
+  # Correct the spelling of 'Geolocation' column if needed
+  colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation'
   df # Return the modified data frame
 })
 
 # Combine all cleaned CHD data frames into one data frame
-CHD_Final <- bind_rows(CHD_data) # Combine all cleaned CHD data frames into one data frame using bind_rows
+CHD_Final <- bind_rows(CHD_data)
 
 # Filter and select specific locations and data for the year 2021 in MN
 Selected_Locations <- CHD_Final |>
-  filter(Year == 2021, StateAbbr == "MN") |> # Filter CHD data for the year 2021 and state of Minnesota
+  filter(Year == 2021, StateAbbr == "MN") |> # Filter data for the year 2021 and state of Minnesota
   left_join(mn_region_raw, by = c("LocationName" = "County")) |> # Join with region data
   left_join(chb_raw, by = c("LocationName" = "County")) # Join with CHB data
 
 # Remove "County" from county names in census data
-CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Remove "County" from county names in the census data
+CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Remove "County" from county names
 
 # Population estimates for CHD in MN
 PopEst_CHDMN <- CensusEstMN |>
-  filter(YEAR == 3) |> # Filter census data for the year 2021
+  filter(YEAR == 3) |> # Filter data for the year 2021
   inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Join with selected CHD locations
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB) # Select relevant columns
 
 # Function to calculate aggregate values---------------------------------------
-# CDC PLACES methodology aggregate calculation here: https://www.cdc.gov/places/faqs/using-data/index.html
 aggregate_values <- function(df, userInput, filterBy) {
   df |>
-    filter(!!sym(filterBy) == userInput) |> # Filter by user input
+    filter(!!sym(filterBy) == userInput) |> # Filter by user input (e.g., county, region)
     mutate(
       Aggregate_Data_Value = Data_Value * AGE18PLUS_TOT / 100, # Calculate aggregate data value
       Aggregate_Low_Confidence_Limit = Low_Confidence_Limit * AGE18PLUS_TOT / 100, # Calculate aggregate low confidence limit
@@ -67,9 +68,9 @@ aggregate_values <- function(df, userInput, filterBy) {
     ) |>
     group_by(across(all_of(filterBy)), Data_Value_Type) |> # Group by filter criteria and data value type
     summarise(
-      Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100, # Summarise aggregate data value
-      Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarise aggregate low confidence limit
-      Aggregate_High_Confidence_Limit = sum(Aggregate_High_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarise aggregate high confidence limit
+      Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100, # Summarize aggregate data value
+      Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarize aggregate low confidence limit
+      Aggregate_High_Confidence_Limit = sum(Aggregate_High_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarize aggregate high confidence limit
       .groups = 'drop' # Drop grouping
     )
 }
@@ -89,7 +90,7 @@ compute_y_axis_limits <- function(data_list) {
 
 # Function to create ggplot graph ---------------------------------------------
 chd_plot <- function(data, y_limits) {
-  ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
+  ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) + # Define the plot aesthetics
     geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) + # Add error bars
     geom_point() + # Add points
     ylim(y_limits) + # Set y-axis limits
@@ -104,6 +105,7 @@ chd_plot <- function(data, y_limits) {
 
 # Function to generate narrative text -----------------------------------------
 generate_narrative <- function(county_data, comparison_data, comparison_name, highlighted_year, highlighted_county, data_type) {
+  # Start the narrative
   narrative <- paste0(
     "In ", highlighted_year, ", <b>adults aged ≥18 years</b> in ", highlighted_county, " had a <b>coronary heart disease</b> ",
     data_type, " of <b>", round(county_data$`Point Estimate`, 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`, 2), "-",
@@ -112,13 +114,16 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
     round(comparison_data$`High Confidence Limit`, 2), ")</b>."
   )
   
-  if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit` || county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
-    narrative <- paste0(narrative, " This difference is <b>statistically significant</b>.")
+  # Check if the selected county's estimate is statistically different
+  if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
+    narrative <- paste0(narrative, " This is <b>statistically lower</b> than the ", comparison_name, ".")
+  } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
+    narrative <- paste0(narrative, " This is <b>statistically higher</b> than the ", comparison_name, ".")
   } else {
-    narrative <- paste0(narrative, " This difference is <b>not statistically significant</b>.")
+    narrative <- paste0(narrative, " This is <b>not statistically different</b> from the ", comparison_name, ".")
   }
   
-  narrative
+  narrative # Return the narrative
 }
 
 # Bookmarking Functionality ---------------------------------------------------
@@ -494,20 +499,34 @@ server <- function(input, output, session) {
         state_data[state_data$`Data Type` == "Age-adjusted prevalence",],
         "state", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
       )
-      age_adjusted_narrative <- paste0(age_adjusted_narrative, " compared to the region's <b>",
-                                       round(region_data$`Point Estimate`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, the CHB's <b>",
-                                       round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>."
-      )
+      age_adjusted_narrative <- paste0(age_adjusted_narrative, " Similarly, it is ",
+                                       generate_narrative(
+                                         county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
+                                         region_data[region_data$`Data Type` == "Age-adjusted prevalence",],
+                                         "region", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
+                                       ), " and ",
+                                       generate_narrative(
+                                         county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
+                                         chb_data[chb_data$`Data Type` == "Age-adjusted prevalence",],
+                                         "CHB", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
+                                       ))
       
       crude_prevalence_narrative <- generate_narrative(
         county_data[county_data$`Data Type` == "Crude prevalence",],
         state_data[state_data$`Data Type` == "Crude prevalence",],
         "state", highlighted_year, highlighted_county, highlighted_crude_prevalence
       )
-      crude_prevalence_narrative <- paste0(crude_prevalence_narrative, " compared to the region's <b>",
-                                           round(region_data$`Point Estimate`[region_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), ")</b>, the CHB's <b>",
-                                           round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), ")</b>."
-      )
+      crude_prevalence_narrative <- paste0(crude_prevalence_narrative, " Similarly, it is ",
+                                           generate_narrative(
+                                             county_data[county_data$`Data Type` == "Crude prevalence",],
+                                             region_data[region_data$`Data Type` == "Crude prevalence",],
+                                             "region", highlighted_year, highlighted_county, highlighted_crude_prevalence
+                                           ), " and ",
+                                           generate_narrative(
+                                             county_data[county_data$`Data Type` == "Crude prevalence",],
+                                             chb_data[chb_data$`Data Type` == "Crude prevalence",],
+                                             "CHB", highlighted_year, highlighted_county, highlighted_crude_prevalence
+                                           ))
     } else if (comparison == "State") {
       age_adjusted_narrative <- generate_narrative(
         county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
@@ -548,4 +567,4 @@ server <- function(input, output, session) {
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server) # Run the Shiny application
+shinyApp(ui = ui, server = server) # Run the Shiny application 
