@@ -122,9 +122,9 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
   if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
     narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
   } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
-    narrative <- paste0(narrative, " The confidence limits (low & high) values <b>higher</b> than the ", comparison_name, ".")
+    narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
   } else {
-    narrative <- paste0(narrative, " The confidence limits (low & high) values <b>overlap</b> with the ", comparison_name, ".")
+    narrative <- paste0(narrative, " The confidence limits values <b>overlap</b> with the ", comparison_name, ".")
   }
   
   # Add statistical significance statement
