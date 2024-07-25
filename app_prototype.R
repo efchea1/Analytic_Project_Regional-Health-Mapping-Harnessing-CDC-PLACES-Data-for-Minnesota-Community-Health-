@@ -118,18 +118,22 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
     round(comparison_data$`High Confidence Limit`, 2), ")</b>."
   )
   
-  # Add additional narrative based on comparison of confidence limits
-  if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
-    narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
-  } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
-    narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
-  } else {
-    narrative <- paste0(narrative, " The confidence limits values <b>overlap</b> with the ", comparison_name, ".")
-  }
+  # # Add additional narrative based on comparison of confidence limits
+  # if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
+  #   narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
+  # } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
+  #   narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
+  # } else {
+  #   narrative <- paste0(narrative, " The confidence limits values <b>overlap</b> with the ", comparison_name, ".")
+  # }
   
   # Add statistical significance statement
   if (county_data$`Low Confidence Limit` > comparison_data$`High Confidence Limit` || county_data$`High Confidence Limit` < comparison_data$`Low Confidence Limit`) {
-    narrative <- paste0(narrative, " The difference in the CI values is <b>statistically significant</b>.")
+    if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
+      narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
+    } else {
+      narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
+    } 
   } else {
     narrative <- paste0(narrative, " The difference in the CI values is <b>not statistically significant</b>.")
   }
@@ -139,7 +143,7 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
 
 # Bookmarking Functionality ---------------------------------------------------
 # Enable bookmarking with URL storage
-enableBookmarking(store = "url")
+#enableBookmarking(store = "url")
 
 # Define UI -------------------------------------------------------------------
 # Define the user interface for the Shiny application
@@ -148,11 +152,11 @@ ui <- function(request) {
     dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
     dashboardSidebar(
       width = 350,
-      div(style = "margin-bottom: 10px;", bookmarkButton(label = "Bookmark")), # Add bookmark button
+      #div(style = "margin-bottom: 10px;", bookmarkButton(label = "Bookmark")), # Add bookmark button
       selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Dropdown for selecting SCHSAC region
       selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
       selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
-      selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "CHB"), selected = "All", multiple = FALSE, width = 350), # Dropdown for selecting comparison type
+      selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting comparison type
       sidebarMenu(
         menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
         menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"), # Menu item for Region & CHB Definition
@@ -520,27 +524,7 @@ server <- function(input, output, session) {
     age_adjusted_narrative <- NULL
     crude_prevalence_narrative <- NULL
     
-    if (comparison == "All") {
-      age_adjusted_narrative <- generate_narrative(
-        county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
-        state_data[state_data$`Data Type` == "Age-adjusted prevalence",],
-        "state", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
-      )
-      age_adjusted_narrative <- paste0(age_adjusted_narrative, " compared to the region's <b>",
-                                       round(region_data$`Point Estimate`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>, the CHB's <b>",
-                                       round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Age-adjusted prevalence"], 2), ")</b>."
-      )
-      
-      crude_prevalence_narrative <- generate_narrative(
-        county_data[county_data$`Data Type` == "Crude prevalence",],
-        state_data[state_data$`Data Type` == "Crude prevalence",],
-        "state", highlighted_year, highlighted_county, highlighted_crude_prevalence
-      )
-      crude_prevalence_narrative <- paste0(crude_prevalence_narrative, " compared to the region's <b>",
-                                           round(region_data$`Point Estimate`[region_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(region_data$`Low Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), "-", round(region_data$`High Confidence Limit`[region_data$`Data Type` == "Crude prevalence"], 2), ")</b>, the CHB's <b>",
-                                           round(chb_data$`Point Estimate`[chb_data$`Data Type` == "Crude prevalence"], 2), "% (95% CI: ", round(chb_data$`Low Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), "-", round(chb_data$`High Confidence Limit`[chb_data$`Data Type` == "Crude prevalence"], 2), ")</b>."
-      )
-    } else if (comparison == "State") {
+    if (comparison == "State") {
       age_adjusted_narrative <- generate_narrative(
         county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
         state_data[state_data$`Data Type` == "Age-adjusted prevalence",],
@@ -628,6 +612,16 @@ server <- function(input, output, session) {
         hoveron = "fills" # Ensure hover information is displayed only when hovering over the county
       )
   })
+  
+  # the next 8 lines are from https://mastering-shiny.org/action-bookmark.html as well as enableBookmarking in the shinyApp function
+  # Automatically bookmark every time an input changes
+  observe({
+    reactiveValuesToList(input)
+    session$doBookmark()
+  })
+  # Update the query string
+  onBookmarked(updateQueryString)
+  
 }
 
 # Run the app -----------------------------------------------------------------
