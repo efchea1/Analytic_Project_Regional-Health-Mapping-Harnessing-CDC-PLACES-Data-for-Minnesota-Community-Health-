@@ -103,6 +103,7 @@ chd_plot <- function(data, y_limits) {
       axis.title.y = element_blank(), # Remove y-axis title
       axis.text.x = element_blank(),  # Remove x-axis text
       axis.title.x = element_blank(), # Remove x-axis title
+      axis.line = element_blank(), # Remove axis lines
       legend.text = element_text(size = 12) # Set legend text size
     )
 }
@@ -118,15 +119,6 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
     round(comparison_data$`High Confidence Limit`, 2), ")</b>."
   )
   
-  # # Add additional narrative based on comparison of confidence limits
-  # if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
-  #   narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
-  # } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
-  #   narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
-  # } else {
-  #   narrative <- paste0(narrative, " The confidence limits values <b>overlap</b> with the ", comparison_name, ".")
-  # }
-  
   # Add statistical significance statement
   if (county_data$`Low Confidence Limit` > comparison_data$`High Confidence Limit` || county_data$`High Confidence Limit` < comparison_data$`Low Confidence Limit`) {
     if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
@@ -141,10 +133,6 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
   narrative
 }
 
-# Bookmarking Functionality ---------------------------------------------------
-# Enable bookmarking with URL storage
-#enableBookmarking(store = "url")
-
 # Define UI -------------------------------------------------------------------
 # Define the user interface for the Shiny application
 ui <- function(request) {
@@ -152,10 +140,9 @@ ui <- function(request) {
     dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
     dashboardSidebar(
       width = 350,
-      #div(style = "margin-bottom: 10px;", bookmarkButton(label = "Bookmark")), # Add bookmark button
       selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Dropdown for selecting SCHSAC region
       selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
-      selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
+      selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
       selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting comparison type
       sidebarMenu(
         menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
@@ -175,7 +162,7 @@ ui <- function(request) {
                 column(
                   width = 12,
                   h1("Welcome to the CDC PLACES MN Region Dashboard"), # Display welcome message
-                  h4(tags$b("Objective:"), "Use CDC PLACES methodology to create MN Regions ShinyLive dashboard for health indicators.", tags$a(href="https://www.cdc.gov/places/faqs/using-data/index.htm", "Link to CDC PLACES methodology to calculate the aggregate values.", target="_blank")), # Link to external site
+                  h4(tags$b("Objective:"), "Use CDC PLACES methodology to create MN Regions ShinyLive dashboard for health indicators.", tags$a(href="https://www.cdc.gov/places/faqs/using-data/index.html", "Link to CDC PLACES methodology to calculate the aggregate values.", target="_blank")), # Link to external site
                   tags$h4(tags$b("Why this project?"), "Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of Minnesota or even the United States."), # Description of the project
                   tags$h3("Those involved with this project are:"), # Project participants
                   tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # Participant 1
@@ -187,36 +174,49 @@ ui <- function(request) {
         ),
         tabItem(
           tabName = "tn_regionChbDefinitions",
-          fluidRow(
-            column(
-              width = 12,
-              tabsetPanel(
-                tabPanel(
-                  "Region/CHB",
-                  fluidRow(
-                    column(
-                      width = 12,
-                      h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")), # Explanation of functionality
-                      h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."), # Note on disabled filters
-                      h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board."), # Purpose of the tab
-                      tags$hr(style = "border-top: 1px solid #ccc; margin-top: 20px; margin-bottom: 20px;") # Horizontal rule for separation
-                    )
-                  ),
-                  fluidRow(
-                    column(6, uiOutput("region_narrative", style = "font-size: 20px;")), # Region narrative output
-                    column(6, uiOutput("chb_narrative_01", style = "font-size: 20px;")) # CHB narrative output
-                  ),
-                  fluidRow(
-                    column(
-                      width = 12,
-                      h3("Regions and Counties"), # Regions and Counties heading
-                      uiOutput("region_counties") # UI output for regions and counties list
-                    ),
-                    column(
-                      width = 12,
-                      h3("Community Health Boards"), # Community Health Boards heading
-                      uiOutput("chb_counties") # UI output for CHB and counties list
-                    )
+          tabsetPanel(
+            tabPanel(
+              "Region/CHB",
+              fluidRow(
+                column(
+                  width = 12,
+                  h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")), # Explanation of functionality
+                  h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."), # Note on disabled filters
+                  h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board.") # Purpose of the tab
+                )
+              ),
+              fluidRow(
+                column(
+                  width = 4,
+                  box(
+                    title = "Minnesota Region Map",
+                    status = "primary", # Box status
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotlyOutput("mn_region_map", height = "500px") # Interactive region map output
+                  )
+                ),
+                column(
+                  width = 4,
+                  box(
+                    title = "Minnesota CHB Map",
+                    status = "primary", # Box status
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotlyOutput("mn_chb_map", height = "500px") # Interactive CHB map output
+                  )
+                ),
+                column(
+                  width = 4,
+                  box(
+                    title = "Minnesota County Map",
+                    status = "primary", # Box status
+                    solidHeader = TRUE, # Solid header
+                    collapsible = TRUE, # Collapsible box
+                    width = NULL, # Full width
+                    plotlyOutput("mn_map", height = "500px") # Interactive county map output
                   )
                 )
               )
@@ -290,14 +290,7 @@ ui <- function(request) {
               fluidRow(
                 column(
                   width = 12,
-                  box(
-                    title = "Map of Minnesota",
-                    status = "primary", # Box status
-                    solidHeader = TRUE, # Solid header
-                    collapsible = TRUE, # Collapsible box
-                    width = NULL, # Full width
-                    plotlyOutput("mn_map", height = "500px") # Interactive map output
-                  )
+                  selectInput("par_prevalence", label = "Select Prevalence", choices = c("Age-adjusted prevalence", "Crude prevalence"), selected = "Age-adjusted prevalence", width = 350) # Dropdown for selecting prevalence type
                 )
               )
             )
@@ -331,12 +324,14 @@ server <- function(input, output, session) {
   
   output$region_narrative <- renderUI({
     filtered_region <- mn_region_raw |> filter(County == input$parGlobal_county) # Filter region data based on the selected county
-    HTML(paste0("<b>", unique(filtered_region$RegionName), " Region</b> is made up of the following counties: ", paste(unique(filtered_region$County), collapse = ", "), ".")) # Generate region narrative text
+    region_vector <- unique(filtered_region$Region)
+    HTML(paste0("<b>", region_vector, " Region</b> is made up of the following counties: ", paste(unique(filtered_region$County), collapse = ", "), ".")) # Generate region narrative text
   })
   
   output$chb_narrative_01 <- renderUI({
     filtered_chb <- chb_raw |> filter(County == input$parGlobal_county) # Filter CHB data based on the selected county
-    HTML(paste0("<b>", unique(filtered_chb$CHBName), " Community Health Board</b> includes: ", paste(unique(filtered_chb$County), collapse = ", "), ".")) # Generate CHB narrative text
+    chb_name_vector <- unique(filtered_chb$CHBName)
+    HTML(paste0("<b>", chb_name_vector, " Community Health Board</b> includes: ", paste(unique(filtered_chb$County), collapse = ", "), ".")) # Generate CHB narrative text
   })
   
   highlight_text <- function(text, keyword) {
@@ -407,7 +402,7 @@ server <- function(input, output, session) {
   reactive_region_data <- reactive({
     county_region <- mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region) |> unique() # Get region for selected county
     PopEst_CHDMN |>
-      filter(Region == county_region) |> # Filter data for selected region
+      filter(Region %in% county_region) |> # Filter data for selected region
       aggregate_values(county_region, 'Region') |>
       select(-Region) |>
       rename(
@@ -422,7 +417,7 @@ server <- function(input, output, session) {
   reactive_chb_data <- reactive({
     county_chb <- chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB) |> unique() # Get CHB for selected county
     PopEst_CHDMN |>
-      filter(CHB == county_chb) |> # Filter data for selected CHB
+      filter(CHB %in% county_chb) |> # Filter data for selected CHB
       aggregate_values(county_chb, 'CHB') |>
       select(-CHB) |>
       rename(
@@ -565,6 +560,7 @@ server <- function(input, output, session) {
   # Render Plotly Map ---------------------------------------------------------
   output$mn_map <- renderPlotly({
     selected_county <- input$parGlobal_county # Get selected county from input
+    selected_region <- input$parGlobal_region
     
     # Load Minnesota county map data and transform subregion names to uppercase
     mn_map_data <- map_data("county", region = "minnesota")
@@ -574,15 +570,9 @@ server <- function(input, output, session) {
     selected_county_data <- mn_map_data |>
       filter(subregion == toupper(selected_county))
     
-    # Get the age-adjusted and crude prevalence data for the selected county
-    county_prevalence_data <- reactive_county_data() |>
-      filter(`Data Type` %in% c("Age-adjusted prevalence", "Crude prevalence"))
-    
-    age_adjusted_prevalence <- county_prevalence_data |>
-      filter(`Data Type` == "Age-adjusted prevalence")
-    
-    crude_prevalence <- county_prevalence_data |>
-      filter(`Data Type` == "Crude prevalence")
+    # Get the region and CHB for the selected county
+    county_region <- unique(mn_region_raw |> filter(County == selected_county) |> pull(Region))
+    county_chb <- unique(chb_raw |> filter(County == selected_county) |> pull(CHB))
     
     # Create ggplot for the map with selected county highlighted
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
@@ -599,15 +589,101 @@ server <- function(input, output, session) {
         hoverinfo = "text",
         text = paste(
           "State: Minnesota",
-          "<br>County:", selected_county,
-          sprintf("<br>Age-adjusted prevalence: %.2f%% (95%% CI: %.2f-%.2f)",
-                  age_adjusted_prevalence$`Point Estimate`,
-                  age_adjusted_prevalence$`Low Confidence Limit`,
-                  age_adjusted_prevalence$`High Confidence Limit`),
-          sprintf("<br>Crude prevalence: %.2f%% (95%% CI: %.2f-%.2f)",
-                  crude_prevalence$`Point Estimate`,
-                  crude_prevalence$`Low Confidence Limit`,
-                  crude_prevalence$`High Confidence Limit`)
+          "<br>Region:", county_region,
+          "<br>CHB:", county_chb,
+          "<br>County:", selected_county
+        ),
+        hoveron = "fills" # Ensure hover information is displayed only when hovering over the county
+      )
+  })
+  
+  # Render Plotly Region Map ---------------------------------------------------------
+  output$mn_region_map <- renderPlotly({
+    selected_county <- input$parGlobal_county
+    selected_region <- input$parGlobal_region # Get selected region from input
+    
+    # Load Minnesota county map data and transform subregion names to uppercase
+    mn_map_data <- map_data("county", region = "minnesota")
+    mn_map_data$subregion <- toupper(mn_map_data$subregion)
+    
+    # Filter map data for the counties in the selected region
+    counties_in_region <- mn_region_raw |>
+      filter(Region == selected_region) |>
+      pull(County) |> unique() |> # Ensure counties_in_region is a unique vector
+      toupper()
+    
+    region_map_data <- mn_map_data |>
+      filter(subregion %in% counties_in_region)
+    
+    # Filter map data for the selected county
+    selected_county_data <- mn_map_data |>
+      filter(subregion == toupper(selected_county))
+    
+    # Create ggplot for the map with counties in the selected region highlighted
+    plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
+      geom_polygon(fill = "grey", color = "white") +
+      geom_polygon(data = region_map_data, aes(fill = subregion), color = "white") +
+      geom_polygon(data = selected_county_data, fill = "red", color = "white") +
+      coord_fixed(1.3) +
+      theme_void() +
+      theme(legend.position = "none")
+    
+    # Convert ggplot to plotly and add hover information
+    ggplotly(plot) |>
+      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
+      style(
+        hoverinfo = "text",
+        text = ~paste(
+          "State: Minnesota",
+          "<br>Region:", selected_region,
+          "<br>County:", subregion
+        ),
+        hoveron = "fills" # Ensure hover information is displayed only when hovering over the county
+      )
+  })
+  
+  # Render Plotly CHB Map ---------------------------------------------------------
+  output$mn_chb_map <- renderPlotly({
+    selected_county <- input$parGlobal_county # Get selected county from input
+    
+    # Load Minnesota county map data and transform subregion names to uppercase
+    mn_map_data <- map_data("county", region = "minnesota")
+    mn_map_data$subregion <- toupper(mn_map_data$subregion)
+    
+    # Get the CHB for the selected county
+    county_chb <- unique(chb_raw |> filter(County == selected_county) |> pull(CHB))
+    
+    # Filter map data for the counties in the selected CHB
+    counties_in_chb <- chb_raw |>
+      filter(CHB %in% county_chb) |>
+      pull(County) |> unique() |> # Ensure counties_in_chb is a unique vector
+      toupper()
+    
+    chb_map_data <- mn_map_data |>
+      filter(subregion %in% counties_in_chb)
+    
+    # Filter map data for the selected county
+    selected_county_data <- mn_map_data |>
+      filter(subregion == toupper(selected_county))
+    
+    # Create ggplot for the map with counties in the selected CHB highlighted
+    plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
+      geom_polygon(fill = "grey", color = "white") +
+      geom_polygon(data = chb_map_data, aes(fill = subregion), color = "white") +
+      geom_polygon(data = selected_county_data, fill = "red", color = "white") +
+      coord_fixed(1.3) +
+      theme_void() +
+      theme(legend.position = "none")
+    
+    # Convert ggplot to plotly and add hover information
+    ggplotly(plot) |>
+      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
+      style(
+        hoverinfo = "text",
+        text = ~paste(
+          "State: Minnesota",
+          "<br>CHB:", county_chb,
+          "<br>County:", subregion
         ),
         hoveron = "fills" # Ensure hover information is displayed only when hovering over the county
       )
@@ -621,11 +697,13 @@ server <- function(input, output, session) {
   })
   # Update the query string
   onBookmarked(updateQueryString)
-  
 }
 
 # Run the app -----------------------------------------------------------------
-shinyApp(ui = ui, server = server)# Run the Shiny application
+shinyApp(ui = ui, server = server) # Run the Shiny application 
+
+
+
 
 
 
@@ -657,12 +735,14 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 # # Shiny Dashboard -------------------------------------------------------------
 # 
 # # Load necessary libraries for the application
-# library(shiny)            # For building interactive web applications
-# library(ggplot2)          # For creating graphics
-# library(dplyr)            # For data manipulation
-# library(shinydashboard)   # For creating dashboards
-# library(shinyjs)          # For adding JavaScript functionality
-# library(tidyr)            # For tidying and handling missing values
+# library(shiny)           # shiny package for building interactive web applications
+# library(ggplot2)         # ggplot2 package for creating graphics
+# library(dplyr)           # dplyr package for data manipulation
+# library(shinydashboard)  # shinydashboard package for creating dashboards
+# library(shinyjs)         # shinyjs package for adding JavaScript functionality
+# library(tidyr)           # tidyr package for tidying and handling missing values
+# library(maps)            # maps package for creating county and state maps
+# library(plotly)          # plotly package for creating interactive plots
 # 
 # # Load Data from GitHub -------------------------------------------------------
 # # Read census estimate data for Minnesota from a CSV file hosted on GitHub
@@ -688,10 +768,8 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 # # Data Wrangling --------------------------------------------------------------
 # # Clean and merge CHD data
 # CHD_data <- lapply(CHD_data, function(df) {
-#   # If 'Latitude' column exists, create 'LocationID' using 'Latitude'
-#   df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA)
-#   # Correct the spelling of 'Geolocation' column if needed
-#   colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation'
+#   df$LocationID <- ifelse("Latitude" %in% colnames(df), as.character(df$Latitude), NA) # Add LocationID if the Latitude column exists
+#   colnames(df)[colnames(df) == 'Geolocatioin'] <- 'Geolocation' # Correct the spelling of Geolocation column if needed
 #   df # Return the modified data frame
 # })
 # 
@@ -700,44 +778,47 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 # 
 # # Filter and select specific locations and data for the year 2021 in MN
 # Selected_Locations <- CHD_Final |>
-#   filter(Year == 2021, StateAbbr == "MN") |> # Filter data for the year 2021 and state of Minnesota
-#   left_join(mn_region_raw, by = c("LocationName" = "County")) |> # Join with region data
-#   left_join(chb_raw, by = c("LocationName" = "County")) # Join with CHB data
+#   filter(Year == 2021, StateAbbr == "MN") |>
+#   left_join(mn_region_raw, by = c("LocationName" = "County")) |>
+#   left_join(chb_raw, by = c("LocationName" = "County"))
 # 
 # # Remove "County" from county names in census data
-# CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME) # Remove "County" from county names
+# CensusEstMN$CTYNAME <- gsub(" County", "", CensusEstMN$CTYNAME)
 # 
 # # Population estimates for CHD in MN
 # PopEst_CHDMN <- CensusEstMN |>
-#   filter(YEAR == 3) |> # Filter data for the year 2021
-#   inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |> # Join with selected CHD locations
-#   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB) # Select relevant columns
+#   filter(YEAR == 3) |>
+#   inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |>
+#   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB)
 # 
 # # Function to calculate aggregate values---------------------------------------
+# # This function calculates aggregate values for given data, based on user input and filter criteria
 # aggregate_values <- function(df, userInput, filterBy) {
 #   df |>
-#     filter(!!sym(filterBy) == userInput) |> # Filter by user input (e.g., county, region)
+#     filter(!!sym(filterBy) == userInput) |>
 #     mutate(
 #       Aggregate_Data_Value = Data_Value * AGE18PLUS_TOT / 100, # Calculate aggregate data value
 #       Aggregate_Low_Confidence_Limit = Low_Confidence_Limit * AGE18PLUS_TOT / 100, # Calculate aggregate low confidence limit
 #       Aggregate_High_Confidence_Limit = High_Confidence_Limit * AGE18PLUS_TOT / 100 # Calculate aggregate high confidence limit
 #     ) |>
-#     group_by(across(all_of(filterBy)), Data_Value_Type) |> # Group by filter criteria and data value type
+#     group_by(across(all_of(filterBy)), Data_Value_Type) |>
 #     summarise(
-#       Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100, # Summarize aggregate data value
-#       Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarize aggregate low confidence limit
-#       Aggregate_High_Confidence_Limit = sum(Aggregate_High_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarize aggregate high confidence limit
+#       Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100, # Summarise aggregate data value
+#       Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarise aggregate low confidence limit
+#       Aggregate_High_Confidence_Limit = sum(Aggregate_High_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100, # Summarise aggregate high confidence limit
 #       .groups = 'drop' # Drop grouping
 #     )
 # }
 # 
 # # Pre-calculate Minnesota total------------------------------------------------
+# # Calculate aggregate values for the entire state of Minnesota
 # mn_total <- PopEst_CHDMN |>
-#   mutate(StateAbbr = "MN") |> # Add state abbreviation
-#   aggregate_values("MN", 'StateAbbr') |> # Calculate the aggregate CHD data for the state of Minnesota
+#   mutate(StateAbbr = "MN") |>
+#   aggregate_values("MN", 'StateAbbr') |>
 #   mutate(across(everything(), ~tidyr::replace_na(., 0))) # Handle NA values
 # 
 # # Function to compute y-axis limits -------------------------------------------
+# # This function computes the y-axis limits for plotting, based on the range of confidence limits across multiple data frames
 # compute_y_axis_limits <- function(data_list) {
 #   min_value <- min(sapply(data_list, function(df) min(df$`Low Confidence Limit`, na.rm = TRUE))) # Find the minimum value across all data frames
 #   max_value <- max(sapply(data_list, function(df) max(df$`High Confidence Limit`, na.rm = TRUE))) # Find the maximum value across all data frames
@@ -745,8 +826,9 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 # }
 # 
 # # Function to create ggplot graph ---------------------------------------------
+# # This function creates a ggplot graph for CHD data with error bars
 # chd_plot <- function(data, y_limits) {
-#   ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) + # Define the plot aesthetics
+#   ggplot(data, aes(x = `Data Type`, y = `Point Estimate`, color = `Data Type`)) +
 #     geom_errorbar(aes(ymin = `Low Confidence Limit`, ymax = `High Confidence Limit`), width = 0.2) + # Add error bars
 #     geom_point() + # Add points
 #     ylim(y_limits) + # Set y-axis limits
@@ -760,8 +842,8 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 # }
 # 
 # # Function to generate narrative text -----------------------------------------
+# # This function generates narrative text comparing CHD data for a county to state, region, or CHB data
 # generate_narrative <- function(county_data, comparison_data, comparison_name, highlighted_year, highlighted_county, data_type) {
-#   # Start the narrative
 #   narrative <- paste0(
 #     "In ", highlighted_year, ", <b>adults aged ≥18 years</b> in ", highlighted_county, " had a <b>coronary heart disease</b> ",
 #     data_type, " of <b>", round(county_data$`Point Estimate`, 2), "% (95% CI: ", round(county_data$`Low Confidence Limit`, 2), "-",
@@ -769,37 +851,45 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #     round(comparison_data$`Point Estimate`, 2), "% (95% CI: ", round(comparison_data$`Low Confidence Limit`, 2), "-",
 #     round(comparison_data$`High Confidence Limit`, 2), ")</b>."
 #   )
-# 
-#   # Check if the selected county's estimate is statistically different
-#   if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
-#     narrative <- paste0(narrative, " This is <b>statistically lower</b> than the ", comparison_name, ".")
-#   } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
-#     narrative <- paste0(narrative, " This is <b>statistically higher</b> than the ", comparison_name, ".")
+#   
+#   # # Add additional narrative based on comparison of confidence limits
+#   # if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
+#   #   narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
+#   # } else if (county_data$`Point Estimate` > comparison_data$`High Confidence Limit`) {
+#   #   narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
+#   # } else {
+#   #   narrative <- paste0(narrative, " The confidence limits values <b>overlap</b> with the ", comparison_name, ".")
+#   # }
+#   
+#   # Add statistical significance statement
+#   if (county_data$`Low Confidence Limit` > comparison_data$`High Confidence Limit` || county_data$`High Confidence Limit` < comparison_data$`Low Confidence Limit`) {
+#     if (county_data$`Point Estimate` < comparison_data$`Low Confidence Limit`) {
+#       narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
+#     } else {
+#       narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
+#     } 
 #   } else {
-#     narrative <- paste0(narrative, " This is <b>not statistically different</b> from the ", comparison_name, ".")
+#     narrative <- paste0(narrative, " The difference in the CI values is <b>not statistically significant</b>.")
 #   }
-# 
-#   narrative # Return the narrative
+#   
+#   narrative
 # }
 # 
-# # Bookmarking Functionality ---------------------------------------------------
-# enableBookmarking(store = "url") # Enable bookmarking with URL storage
-# 
 # # Define UI -------------------------------------------------------------------
+# # Define the user interface for the Shiny application
 # ui <- function(request) {
 #   dashboardPage(
 #     dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
 #     dashboardSidebar(
 #       width = 350,
-#       div(style = "margin-bottom: 10px;", bookmarkButton(label = "Bookmark")), # Add bookmark button
-#       selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Create dropdown for selecting SCHSAC region
-#       selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Create dropdown for selecting county
-#       selectInput("parLocal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Create dropdown for selecting year
-#       selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("All", "State", "Region", "CHB"), selected = "All", multiple = FALSE, width = 350), # Create dropdown for selecting comparison type
+#       selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Dropdown for selecting SCHSAC region
+#       selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
+#       selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
+#       selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting comparison type
 #       sidebarMenu(
-#         menuItem("Home", tabName = "tn_homePage"), # Create menu item for Home page
-#         menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"), # Create menu item for Region & CHB Definition
-#         menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease") # Create menu item for Coronary Heart Disease
+#         menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
+#         menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"), # Menu item for Region & CHB Definition
+#         menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease") # Menu item for Coronary Heart Disease
 #       )
 #     ),
 #     dashboardBody(
@@ -814,8 +904,8 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #                 column(
 #                   width = 12,
 #                   h1("Welcome to the CDC PLACES MN Region Dashboard"), # Display welcome message
-#                   h4(tags$b("Objective:"), "Use CDC PLACES methodology to create MN Regions ShinyLive dashboard for health indicators.", tags$a(href="https://www.cdc.gov/places/faqs/using-data/index.htm", "Link to CDC PLACES methodology to calculate the aggregate values.", target="_blank")), # Link to external site
-#                   tags$h4(tags$b("Why this project?"),"Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of Minnesota or even the United States."), # Description of the project
+#                   h4(tags$b("Objective:"), "Use CDC PLACES methodology to create MN Regions ShinyLive dashboard for health indicators.", tags$a(href="https://www.cdc.gov/places/faqs/using-data/index.html", "Link to CDC PLACES methodology to calculate the aggregate values.", target="_blank")), # Link to external site
+#                   tags$h4(tags$b("Why this project?"), "Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of Minnesota or even the United States."), # Description of the project
 #                   tags$h3("Those involved with this project are:"), # Project participants
 #                   tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # Participant 1
 #                   tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher") # Participant 2
@@ -925,6 +1015,19 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #                     tableOutput("table_county") # County table output
 #                   )
 #                 )
+#               ),
+#               fluidRow(
+#                 column(
+#                   width = 12,
+#                   box(
+#                     title = "Map of Minnesota",
+#                     status = "primary", # Box status
+#                     solidHeader = TRUE, # Solid header
+#                     collapsible = TRUE, # Collapsible box
+#                     width = NULL, # Full width
+#                     plotlyOutput("mn_map", height = "500px") # Interactive map output
+#                   )
+#                 )
 #               )
 #             )
 #           )
@@ -935,6 +1038,7 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 # }
 # 
 # # Server Logic ----------------------------------------------------------------
+# # Define the server logic for the Shiny application
 # server <- function(input, output, session) {
 #   # Update the Select County of Interest dropdown based on the selected SCHSAC Region
 #   observe({
@@ -949,71 +1053,71 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #       updateSelectInput(session, "parGlobal_county", choices = sort(unique(mn_region_raw$County)))
 #     }
 #   })
-# 
+#   
 #   observe({
 #     updateSelectInput(session, "parGlobal_chb", choices = unique(chb_raw$CHBName)) # Update CHB input choices based on unique CHB names in the data
 #   })
-# 
+#   
 #   output$region_narrative <- renderUI({
 #     filtered_region <- mn_region_raw |> filter(County == input$parGlobal_county) # Filter region data based on the selected county
 #     HTML(paste0("<b>", unique(filtered_region$RegionName), " Region</b> is made up of the following counties: ", paste(unique(filtered_region$County), collapse = ", "), ".")) # Generate region narrative text
 #   })
-# 
+#   
 #   output$chb_narrative_01 <- renderUI({
 #     filtered_chb <- chb_raw |> filter(County == input$parGlobal_county) # Filter CHB data based on the selected county
 #     HTML(paste0("<b>", unique(filtered_chb$CHBName), " Community Health Board</b> includes: ", paste(unique(filtered_chb$County), collapse = ", "), ".")) # Generate CHB narrative text
 #   })
-# 
+#   
 #   highlight_text <- function(text, keyword) {
 #     gsub(keyword, paste0("<font color='red'>", keyword, "</font>"), text) # Highlight the selected county in red
 #   }
-# 
+#   
 #   output$region_counties <- renderUI({
 #     selected_county <- input$parGlobal_county
 #     regions <- mn_region_raw |>
 #       group_by(Region) |>
 #       summarise(Counties = paste(County, collapse = ", ")) # Group and summarize counties by region
-# 
+#     
 #     regions_text <- regions |>
 #       mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) |>
 #       pull(Text) # Create region text
-# 
+#     
 #     regions_text <- sapply(regions_text, highlight_text, keyword = selected_county) # Highlight selected county
 #     HTML(paste(regions_text, collapse = "<br>")) # Render HTML for regions and counties list
 #   })
-# 
+#   
 #   output$chb_counties <- renderUI({
 #     selected_county <- input$parGlobal_county
 #     chbs <- chb_raw |>
 #       group_by(CHB) |>
 #       summarise(Counties = paste(County, collapse = ", ")) # Group and summarize counties by CHB
-# 
+#     
 #     chb_text <- chbs |>
 #       mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) |>
 #       pull(Text) # Create CHB text
-# 
+#     
 #     chb_text <- sapply(chb_text, highlight_text, keyword = selected_county) # Highlight selected county
 #     HTML(paste(chb_text, collapse = "<br>")) # Render HTML for CHBs and counties list
 #   })
-# 
+#   
 #   output$selected_county_title <- renderText({
 #     HTML(paste("Coronary Heart Disease Exposure", "<br/>", input$parGlobal_county, "County")) # Create the title for the selected county
 #   })
-# 
+#   
 #   output$selected_region_title <- renderText({
 #     county_region <- mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region) |> unique() # Get region for selected county
 #     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_region, "Region")) # Create the title for the selected region
 #   })
-# 
+#   
 #   output$selected_state_title <- renderText({
 #     HTML(paste("Coronary Heart Disease Exposure", "<br/>Minnesota")) # Create the title for the state
 #   })
-# 
+#   
 #   output$selected_chb_title <- renderText({
 #     county_chb <- chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB) |> unique() # Get CHB for selected county
 #     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_chb, "CHB")) # Create the title for the selected CHB
 #   })
-# 
+#   
 #   # Reactive Data for plotting ------------------------------------------------
 #   reactive_county_data <- reactive({
 #     PopEst_CHDMN |>
@@ -1028,7 +1132,7 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #       ) |>
 #       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
 #   })
-# 
+#   
 #   reactive_region_data <- reactive({
 #     county_region <- mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region) |> unique() # Get region for selected county
 #     PopEst_CHDMN |>
@@ -1043,7 +1147,7 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #       ) |>
 #       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
 #   })
-# 
+#   
 #   reactive_chb_data <- reactive({
 #     county_chb <- chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB) |> unique() # Get CHB for selected county
 #     PopEst_CHDMN |>
@@ -1058,7 +1162,7 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #       ) |>
 #       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
 #   })
-# 
+#   
 #   # Compute y-axis limits
 #   y_axis_limits <- reactive({
 #     data_list <- list(
@@ -1075,19 +1179,19 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #     )
 #     compute_y_axis_limits(data_list) # Compute y-axis limits for all plots, handling NA values
 #   })
-# 
+#   
 #   output$plot_county <- renderPlot({
 #     chd_plot(reactive_county_data(), y_axis_limits()) # Render plot for the selected county with customized y-axis limits
 #   })
-# 
+#   
 #   output$plot_chbRegion <- renderPlot({
 #     chd_plot(reactive_region_data(), y_axis_limits()) # Render plot for the selected region with customized y-axis limits
 #   })
-# 
+#   
 #   output$plot_chdCHB <- renderPlot({
 #     chd_plot(reactive_chb_data(), y_axis_limits()) # Render plot for the selected CHB with customized y-axis limits
 #   })
-# 
+#   
 #   output$plot_state <- renderPlot({
 #     data <- mn_total |>
 #       rename(
@@ -1099,20 +1203,20 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
 #     chd_plot(data, y_axis_limits()) # Render plot for the state with customized y-axis limits
 #   })
-# 
+#   
 #   # Summary Tables -----------------------------------------------------------
 #   output$table_county <- renderTable({
 #     reactive_county_data() # Render summary table for the selected county
 #   })
-# 
+#   
 #   output$table_region <- renderTable({
 #     reactive_region_data() # Render summary table for the selected region
 #   })
-# 
+#   
 #   output$table_chb <- renderTable({
 #     reactive_chb_data() # Render summary table for the selected CHB
 #   })
-# 
+#   
 #   output$table_state <- renderTable({
 #     mn_total |>
 #       rename(
@@ -1123,7 +1227,7 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #       ) |>
 #       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`) # Render summary table for the state with renamed columns
 #   })
-# 
+#   
 #   # Narrative ----------------------------------------------------------------
 #   output$narrative_text <- renderUI({
 #     county_data <- reactive_county_data()
@@ -1134,10 +1238,10 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #         `Low Confidence Limit` = Aggregate_Low_Confidence_Limit,
 #         `High Confidence Limit` = Aggregate_High_Confidence_Limit
 #       )
-# 
+#     
 #     region_data <- reactive_region_data()
 #     chb_data <- reactive_chb_data()
-# 
+#     
 #     county <- input$parGlobal_county
 #     comparison <- input$par_chdStateRegionChb
 #     year <- "2021"
@@ -1145,45 +1249,11 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #     highlighted_county <- highlight_text(county, county)
 #     highlighted_age_adjusted_prevalence <- highlight_text("age-adjusted prevalence", "age-adjusted prevalence")
 #     highlighted_crude_prevalence <- highlight_text("crude prevalence", "crude prevalence")
-# 
+#     
 #     age_adjusted_narrative <- NULL
 #     crude_prevalence_narrative <- NULL
-# 
-#     if (comparison == "All") {
-#       age_adjusted_narrative <- generate_narrative(
-#         county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
-#         state_data[state_data$`Data Type` == "Age-adjusted prevalence",],
-#         "state", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
-#       )
-#       age_adjusted_narrative <- paste0(age_adjusted_narrative, " Similarly, it is ",
-#                                        generate_narrative(
-#                                          county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
-#                                          region_data[region_data$`Data Type` == "Age-adjusted prevalence",],
-#                                          "region", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
-#                                        ), " and ",
-#                                        generate_narrative(
-#                                          county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
-#                                          chb_data[chb_data$`Data Type` == "Age-adjusted prevalence",],
-#                                          "CHB", highlighted_year, highlighted_county, highlighted_age_adjusted_prevalence
-#                                        ))
-# 
-#       crude_prevalence_narrative <- generate_narrative(
-#         county_data[county_data$`Data Type` == "Crude prevalence",],
-#         state_data[state_data$`Data Type` == "Crude prevalence",],
-#         "state", highlighted_year, highlighted_county, highlighted_crude_prevalence
-#       )
-#       crude_prevalence_narrative <- paste0(crude_prevalence_narrative, " Similarly, it is ",
-#                                            generate_narrative(
-#                                              county_data[county_data$`Data Type` == "Crude prevalence",],
-#                                              region_data[region_data$`Data Type` == "Crude prevalence",],
-#                                              "region", highlighted_year, highlighted_county, highlighted_crude_prevalence
-#                                            ), " and ",
-#                                            generate_narrative(
-#                                              county_data[county_data$`Data Type` == "Crude prevalence",],
-#                                              chb_data[chb_data$`Data Type` == "Crude prevalence",],
-#                                              "CHB", highlighted_year, highlighted_county, highlighted_crude_prevalence
-#                                            ))
-#     } else if (comparison == "State") {
+#     
+#     if (comparison == "State") {
 #       age_adjusted_narrative <- generate_narrative(
 #         county_data[county_data$`Data Type` == "Age-adjusted prevalence",],
 #         state_data[state_data$`Data Type` == "Age-adjusted prevalence",],
@@ -1217,10 +1287,73 @@ shinyApp(ui = ui, server = server)# Run the Shiny application
 #         "CHB", highlighted_year, highlighted_county, highlighted_crude_prevalence
 #       )
 #     }
-# 
+#     
 #     HTML(paste(age_adjusted_narrative, "<br><br>", crude_prevalence_narrative)) # Render the narrative text
 #   })
+#   
+#   # Render Plotly Map ---------------------------------------------------------
+#   output$mn_map <- renderPlotly({
+#     selected_county <- input$parGlobal_county # Get selected county from input
+#     selected_region <- input$parGlobal_region
+#     
+#     # Load Minnesota county map data and transform subregion names to uppercase
+#     mn_map_data <- map_data("county", region = "minnesota")
+#     mn_map_data$subregion <- toupper(mn_map_data$subregion)
+#     
+#     # Filter map data for the selected county
+#     selected_county_data <- mn_map_data |>
+#       filter(subregion == toupper(selected_county))
+#     
+#     # Get the age-adjusted and crude prevalence data for the selected county
+#     county_prevalence_data <- reactive_county_data() |>
+#       filter(`Data Type` %in% c("Age-adjusted prevalence", "Crude prevalence"))
+#     
+#     age_adjusted_prevalence <- county_prevalence_data |>
+#       filter(`Data Type` == "Age-adjusted prevalence")
+#     
+#     crude_prevalence <- county_prevalence_data |>
+#       filter(`Data Type` == "Crude prevalence")
+#     
+#     # Create ggplot for the map with selected county highlighted
+#     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
+#       geom_polygon(fill = "grey", color = "white") +
+#       geom_polygon(data = selected_county_data, fill = "red", color = "white") +
+#       coord_fixed(1.3) +
+#       theme_void() +
+#       theme(legend.position = "none")
+#     
+#     # Convert ggplot to plotly and add hover information
+#     ggplotly(plot) |>
+#       layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
+#       style(
+#         hoverinfo = "text",
+#         text = paste(
+#           "State: Minnesota",
+#           "<br>Region:", selected_region,
+#           "<br>County:", selected_county,
+#           sprintf("<br>Age-adjusted prevalence: %.2f%% (95%% CI: %.2f-%.2f)",
+#                   age_adjusted_prevalence$`Point Estimate`,
+#                   age_adjusted_prevalence$`Low Confidence Limit`,
+#                   age_adjusted_prevalence$`High Confidence Limit`),
+#           sprintf("<br>Crude prevalence: %.2f%% (95%% CI: %.2f-%.2f)",
+#                   crude_prevalence$`Point Estimate`,
+#                   crude_prevalence$`Low Confidence Limit`,
+#                   crude_prevalence$`High Confidence Limit`)
+#         ),
+#         hoveron = "fills" # Ensure hover information is displayed only when hovering over the county
+#       )
+#   })
+#   
+#   # the next 8 lines are from https://mastering-shiny.org/action-bookmark.html as well as enableBookmarking in the shinyApp function
+#   # Automatically bookmark every time an input changes
+#   observe({
+#     reactiveValuesToList(input)
+#     session$doBookmark()
+#   })
+#   # Update the query string
+#   onBookmarked(updateQueryString)
+#   
 # }
 # 
 # # Run the app -----------------------------------------------------------------
-# shinyApp(ui = ui, server = server) # Run the Shiny application
+# shinyApp(ui = ui, server = server)# Run the Shiny application
