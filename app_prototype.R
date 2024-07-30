@@ -196,7 +196,7 @@ ui <- function(request) {
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_region_map", height = "500px")
+                    plotlyOutput("mn_region_map", height = "400px")
                   )
                 ),
                 column(
@@ -207,7 +207,7 @@ ui <- function(request) {
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_chb_map", height = "500px")
+                    plotlyOutput("mn_chb_map", height = "400px")
                   )
                 ),
                 column(
@@ -218,7 +218,7 @@ ui <- function(request) {
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_map", height = "500px")
+                    plotlyOutput("mn_map", height = "400px")
                   )
                 )
               )
@@ -302,7 +302,7 @@ ui <- function(request) {
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_adults_chd_exposure_map", height = "500px")
+                    plotlyOutput("mn_adults_chd_exposure_map", height = "400px")
                   )
                 )
               )
@@ -729,7 +729,7 @@ server <- function(input, output, session) {
              `Low Confidence Limit` = Low_Confidence_Limit,
              `High Confidence Limit` = High_Confidence_Limit) |> 
       mutate(
-        is_hotspot = ifelse(`Point Estimate` < 0.74 | `Point Estimate` < 7.4, "No (Prevalence < 7.4%)", "Yes (Prevalence > 7.3%)"),
+        is_hotspot = ifelse(`Point Estimate` < 0.74 | `Point Estimate` < 7.4, "No, (Prevalence < 7.4%)", "Yes, (Prevalence > 7.3%)"),
         `County` = toupper(`County`)
       )
     
