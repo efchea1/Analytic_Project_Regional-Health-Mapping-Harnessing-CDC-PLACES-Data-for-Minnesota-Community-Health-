@@ -45,7 +45,7 @@ CHD_Final <- bind_rows(CHD_data)
 
 # Standardize County Names
 standardize_county_names <- function(x) {
-  tools::toTitleCase(tolower(x))
+  tools::toTitleCase(tolower(gsub("St. Louis", "St Louis", x)))
 }
 
 CHD_Final$LocationName <- standardize_county_names(CHD_Final$LocationName)
@@ -604,12 +604,8 @@ server <- function(input, output, session) {
     selected_county_data <- mn_map_data |>
       filter(subregion == standardize_county_names(selected_county))
     
-    county_region <- mn_region_raw |>
-      filter(County == selected_county) |>
-      pull(Region)
-    county_chb <- chb_raw |>
-      filter(County == selected_county) |>
-      pull(CHB)
+    county_region <- mn_region_raw |> filter(County == selected_county) |> pull(Region)
+    county_chb <- chb_raw |> filter(County == selected_county) |> pull(CHB)
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
       geom_polygon(fill = "#78BE21", color = "white") +
@@ -685,20 +681,14 @@ server <- function(input, output, session) {
     mn_map_data <- mn_map_data |>
       left_join(chb_raw, by = c("subregion" = "County"))
     
-    county_chb <- chb_raw |>
-      filter(County == selected_county) |>
-      pull(CHB)
+    county_chb <- chb_raw |> filter(County == selected_county) |> pull(CHB)
     
-    counties_in_chb <- chb_raw |>
-      filter(CHB == county_chb) |>
-      pull(County)
+    counties_in_chb <- chb_raw |> filter(CHB == county_chb) |> pull(County)
     counties_in_chb <- map_chr(counties_in_chb, standardize_county_names)
     
-    chb_map_data <- mn_map_data |>
-      filter(subregion %in% counties_in_chb)
+    chb_map_data <- mn_map_data |> filter(subregion %in% counties_in_chb)
     
-    selected_county_data <- mn_map_data |>
-      filter(subregion == standardize_county_names(selected_county))
+    selected_county_data <- mn_map_data |> filter(subregion == standardize_county_names(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
       geom_polygon(fill = "#78BE21", color = "white") +
