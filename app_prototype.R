@@ -300,14 +300,14 @@ ui <- function(request) {
                   selectInput("parLocal_prevalence", label = "Select Prevalence", choices = c("Age-adjusted prevalence", "Crude prevalence"), selected = "Age-adjusted prevalence", width = 350)
                 ),
                 column(
-                  width = 12,
+                  width = 8,
                   box(
                     title = "Minnesota CHD Exposure Map",
                     status = "primary",
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_adults_chd_exposure_map", height = "400px")
+                    plotlyOutput("mn_adults_chd_exposure_map", height = "400px", width = "700px")
                   )
                 )
               )
