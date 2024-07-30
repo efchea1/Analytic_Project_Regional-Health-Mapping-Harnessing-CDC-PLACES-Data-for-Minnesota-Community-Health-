@@ -1,14 +1,14 @@
 # Shiny Dashboard -------------------------------------------------------------
 
 # Load necessary libraries 
-library(shiny)          # For building interactive web applications
-library(ggplot2)        # For creating graphs
-library(dplyr)          # For data manipulation
-library(shinydashboard) # For creating dashboard layouts in Shiny
-library(shinyjs)        # For enhancing Shiny apps with JavaScript
-library(tidyr)          # For tidying data
-library(maps)           # For mapping functions
-library(plotly)         # For interactive plots
+library(shiny)          # shiny for building interactive web applications
+library(ggplot2)        # ggplot2 for creating graphs
+library(dplyr)          # dplyr for data manipulation
+library(shinydashboard) # shinydashboard for creating dashboard layouts in Shiny
+library(shinyjs)        # shinyjs for enhancing Shiny apps with JavaScript
+library(tidyr)          # tidyr for tidying data
+library(maps)           # maps for mapping functions
+library(plotly)         # plotly for interactive plots
 
 # Load Data from GitHub -------------------------------------------------------
 # Read census population estimates data from GitHub
@@ -139,21 +139,21 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
 # Define the user interface (UI) for the Shiny dashboard
 ui <- function(request) {
   dashboardPage(
-    dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400),
+    dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
     dashboardSidebar(
       width = 350,
-      selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350),
-      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350),
-      selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350),
-      selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350),
+      selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Dropdown for selecting SCHSAC region
+      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
+      selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
+      selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting year
       sidebarMenu(
-        menuItem("Home", tabName = "tn_homePage"),
+        menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
         menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"),
         menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease")
       )
     ),
     dashboardBody(
-      shinyjs::useShinyjs(),
+      shinyjs::useShinyjs(), # Javascript
       tabItems(
         tabItem(
           tabName = "tn_homePage",
@@ -163,12 +163,12 @@ ui <- function(request) {
               fluidRow(
                 column(
                   width = 12,
-                  h1("Welcome to the CDC PLACES MN Region Dashboard"),
-                  h4(tags$b("Objective:"), "Use CDC PLACES methodology to create MN Regions ShinyLive dashboard for health indicators.", tags$a(href="https://www.cdc.gov/places/faqs/using-data/index.html", "Link to CDC PLACES methodology to calculate the aggregate values.", target="_blank")),
-                  tags$h4(tags$b("Why this project?"), "Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of Minnesota or even the United States."),
-                  tags$h3("Those involved with this project are:"),
-                  tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"),
-                  tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher")
+                  h1("Welcome to the CDC PLACES MN Region Dashboard"), # Display welcome message
+                  h4(tags$b("Objective:"), "Use CDC PLACES methodology to create MN Regions ShinyLive dashboard for health indicators.", tags$a(href="https://www.cdc.gov/places/faqs/using-data/index.html", "Link to CDC PLACES methodology to calculate the aggregate values.", target="_blank")), # Link to external site
+                  tags$h4(tags$b("Why this project?"), "Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of Minnesota or even the United States."), # Description of the project
+                  tags$h3("Those involved with this project are:"), # Project participants
+                  tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # Participant 1
+                  tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher") # Participant 2
                 )
               )
             )
@@ -182,9 +182,9 @@ ui <- function(request) {
               fluidRow(
                 column(
                   width = 12,
-                  h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")),
-                  h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."),
-                  h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board.")
+                  h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")), # Explanation of functionality
+                  h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."), # Note on disabled filters
+                  h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board.") # Purpose of the tab
                 )
               ),
               fluidRow(
@@ -607,8 +607,8 @@ server <- function(input, output, session) {
       pull(CHB)
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
-      geom_polygon(fill = "grey", color = "white") +
-      geom_polygon(data = selected_county_data, fill = "red", color = "white") +
+      geom_polygon(fill = "#78BE21", color = "white") +
+      geom_polygon(data = selected_county_data, fill = "#003865", color = "white") +
       coord_fixed(1.3) +
       theme_void() +
       theme(legend.position = "none")
@@ -650,9 +650,9 @@ server <- function(input, output, session) {
       filter(subregion == toupper(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
-      geom_polygon(fill = "grey", color = "white") +
+      geom_polygon(fill = "#78BE21", color = "white") +
       geom_polygon(data = region_map_data, fill = "blue", color = "white") +
-      geom_polygon(data = selected_county_data, fill = "red", color = "white") +
+      geom_polygon(data = selected_county_data, fill = "#003865", color = "white") +
       coord_fixed(1.3) +
       theme_void() +
       theme(legend.position = "none")
@@ -696,9 +696,9 @@ server <- function(input, output, session) {
       filter(subregion == toupper(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
-      geom_polygon(fill = "grey", color = "white") +
+      geom_polygon(fill = "#78BE21", color = "white") +
       geom_polygon(data = chb_map_data, aes(fill = subregion), color = "white") +
-      geom_polygon(data = selected_county_data, fill = "red", color = "white") +
+      geom_polygon(data = selected_county_data, fill = "#003865", color = "white") +
       coord_fixed(1.3) +
       theme_void() +
       theme(legend.position = "none")
