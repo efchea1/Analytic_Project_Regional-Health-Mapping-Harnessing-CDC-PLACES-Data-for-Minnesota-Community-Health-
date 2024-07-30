@@ -9,6 +9,7 @@ library(shinyjs)        # shinyjs for enhancing Shiny apps with JavaScript
 library(tidyr)          # tidyr for tidying data
 library(maps)           # maps for mapping functions
 library(plotly)         # plotly for interactive plots
+library(purrr)          # purrr for functional programming
 
 # Load Data from GitHub -------------------------------------------------------
 # Read census population estimates data from GitHub
@@ -43,10 +44,14 @@ CHD_data <- lapply(CHD_data, function(df) {
 CHD_Final <- bind_rows(CHD_data)
 
 # Standardize County Names
-CHD_Final$LocationName <- toupper(CHD_Final$LocationName)
-mn_region_raw$County <- toupper(mn_region_raw$County)
-chb_raw$County <- toupper(chb_raw$County)
-CensusEstMN$CTYNAME <- toupper(gsub(" County", "", CensusEstMN$CTYNAME))
+standardize_county_names <- function(x) {
+  tools::toTitleCase(tolower(x))
+}
+
+CHD_Final$LocationName <- standardize_county_names(CHD_Final$LocationName)
+mn_region_raw$County <- standardize_county_names(mn_region_raw$County)
+chb_raw$County <- standardize_county_names(chb_raw$County)
+CensusEstMN$CTYNAME <- standardize_county_names(gsub(" County", "", CensusEstMN$CTYNAME))
 
 # Select relevant data and merge with region and CHB data
 Selected_Locations <- CHD_Final |>
@@ -365,7 +370,7 @@ server <- function(input, output, session) {
       mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) |>
       pull(Text)
     
-    regions_text <- sapply(regions_text, highlight_text, keyword = selected_county)
+    regions_text <- map_chr(regions_text, ~ highlight_text(.x, selected_county))
     HTML(paste(regions_text, collapse = "<br>"))
   })
   
@@ -380,7 +385,7 @@ server <- function(input, output, session) {
       mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) |>
       pull(Text)
     
-    chb_text <- sapply(chb_text, highlight_text, keyword = selected_county)
+    chb_text <- map_chr(chb_text, ~ highlight_text(.x, selected_county))
     HTML(paste(chb_text, collapse = "<br>"))
   })
   
@@ -594,10 +599,10 @@ server <- function(input, output, session) {
     selected_county <- input$parGlobal_county
     
     mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- toupper(mn_map_data$subregion)
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
     
     selected_county_data <- mn_map_data |>
-      filter(subregion == toupper(selected_county))
+      filter(subregion == standardize_county_names(selected_county))
     
     county_region <- mn_region_raw |>
       filter(County == selected_county) |>
@@ -633,21 +638,21 @@ server <- function(input, output, session) {
     selected_region <- input$parGlobal_region
     
     mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- toupper(mn_map_data$subregion)
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
     
     mn_map_data <- mn_map_data |>
       left_join(mn_region_raw, by = c("subregion" = "County"))
     
     counties_in_region <- mn_region_raw |>
       filter(Region == selected_region) |>
-      pull(County) |>
-      toupper()
+      pull(County)
+    counties_in_region <- map_chr(counties_in_region, standardize_county_names)
     
     region_map_data <- mn_map_data |>
       filter(subregion %in% counties_in_region)
     
     selected_county_data <- mn_map_data |>
-      filter(subregion == toupper(selected_county))
+      filter(subregion == standardize_county_names(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
       geom_polygon(fill = "#78BE21", color = "white") +
@@ -675,7 +680,7 @@ server <- function(input, output, session) {
     selected_county <- input$parGlobal_county
     
     mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- toupper(mn_map_data$subregion)
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
     
     mn_map_data <- mn_map_data |>
       left_join(chb_raw, by = c("subregion" = "County"))
@@ -686,14 +691,14 @@ server <- function(input, output, session) {
     
     counties_in_chb <- chb_raw |>
       filter(CHB == county_chb) |>
-      pull(County) |>
-      toupper()
+      pull(County)
+    counties_in_chb <- map_chr(counties_in_chb, standardize_county_names)
     
     chb_map_data <- mn_map_data |>
       filter(subregion %in% counties_in_chb)
     
     selected_county_data <- mn_map_data |>
-      filter(subregion == toupper(selected_county))
+      filter(subregion == standardize_county_names(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
       geom_polygon(fill = "#78BE21", color = "white") +
@@ -722,7 +727,7 @@ server <- function(input, output, session) {
     
     exposure_data <- Selected_Locations |>
       filter(Data_Value_Type == selected_prevalence) |>
-      mutate(LocationName = ifelse(LocationName == "ST. LOUIS", "ST LOUIS", LocationName)) |>
+      mutate(LocationName = ifelse(LocationName == "St. Louis", "St Louis", LocationName)) |>
       select(LocationName, Data_Value, Region, CHB, Low_Confidence_Limit, High_Confidence_Limit) |>
       rename(`County` = LocationName,
              `Point Estimate` = Data_Value,
@@ -730,11 +735,11 @@ server <- function(input, output, session) {
              `High Confidence Limit` = High_Confidence_Limit) |> 
       mutate(
         is_hotspot = ifelse(`Point Estimate` < 0.74 | `Point Estimate` < 7.4, "No, (Prevalence < 7.4%)", "Yes, (Prevalence > 7.3%)"),
-        `County` = toupper(`County`)
+        `County` = standardize_county_names(`County`)
       )
     
     mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- toupper(mn_map_data$subregion)
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
     
     map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "County", all.x = TRUE) |> 
       arrange(order)
@@ -770,4 +775,4 @@ server <- function(input, output, session) {
 }
 
 # Create Shiny app
-shinyApp(ui = ui, server = server) # Run the Shiny application 
+shinyApp(ui = ui, server = server) # Run the Shiny application  
