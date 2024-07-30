@@ -1,6 +1,6 @@
 # Shiny Dashboard -------------------------------------------------------------
 
-# Load necessary libraries for the application.
+# Load necessary libraries 
 library(shiny)          # For building interactive web applications
 library(ggplot2)        # For creating graphs
 library(dplyr)          # For data manipulation
@@ -49,28 +49,28 @@ chb_raw$County <- toupper(chb_raw$County)
 CensusEstMN$CTYNAME <- toupper(gsub(" County", "", CensusEstMN$CTYNAME))
 
 # Select relevant data and merge with region and CHB data
-Selected_Locations <- CHD_Final %>%
-  filter(Year == 2021, StateAbbr == "MN") %>%
-  left_join(mn_region_raw, by = c("LocationName" = "County")) %>%
+Selected_Locations <- CHD_Final |>
+  filter(Year == 2021, StateAbbr == "MN") |>
+  left_join(mn_region_raw, by = c("LocationName" = "County")) |>
   left_join(chb_raw, by = c("LocationName" = "County"))
 
 # Filter and select specific columns for population estimates and CHD data
-PopEst_CHDMN <- CensusEstMN %>%
-  filter(YEAR == 3) %>%
-  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) %>%
+PopEst_CHDMN <- CensusEstMN |>
+  filter(YEAR == 3) |>
+  inner_join(Selected_Locations, by = c("CTYNAME" = "LocationName")) |>
   select(CTYNAME, Data_Value_Type, AGE18PLUS_TOT, Measure, Data_Value, High_Confidence_Limit, Low_Confidence_Limit, Region, CHB)
 
 # Function to calculate aggregate values---------------------------------------
 # Define a function to calculate aggregate values for a given dataframe, user input, and filter criterion
 aggregate_values <- function(df, userInput, filterBy) {
-  df %>%
-    filter(!!sym(filterBy) == userInput) %>%
+  df |>
+    filter(!!sym(filterBy) == userInput) |>
     mutate(
       Aggregate_Data_Value = Data_Value * AGE18PLUS_TOT / 100,
       Aggregate_Low_Confidence_Limit = Low_Confidence_Limit * AGE18PLUS_TOT / 100,
       Aggregate_High_Confidence_Limit = High_Confidence_Limit * AGE18PLUS_TOT / 100
-    ) %>%
-    group_by(across(all_of(filterBy)), Data_Value_Type) %>%
+    ) |>
+    group_by(across(all_of(filterBy)), Data_Value_Type) |>
     summarise(
       Aggregate_Data_Value = sum(Aggregate_Data_Value) / sum(AGE18PLUS_TOT) * 100,
       Aggregate_Low_Confidence_Limit = sum(Aggregate_Low_Confidence_Limit) / sum(AGE18PLUS_TOT) * 100,
@@ -81,9 +81,9 @@ aggregate_values <- function(df, userInput, filterBy) {
 
 # Pre-calculate Minnesota total------------------------------------------------
 # Calculate aggregate values for Minnesota
-mn_total <- PopEst_CHDMN %>%
-  mutate(StateAbbr = "MN") %>%
-  aggregate_values("MN", 'StateAbbr') %>%
+mn_total <- PopEst_CHDMN |>
+  mutate(StateAbbr = "MN") |>
+  aggregate_values("MN", 'StateAbbr') |>
   mutate(across(everything(), ~tidyr::replace_na(., 0)))
 
 # Function to compute y-axis limits -------------------------------------------
@@ -321,8 +321,8 @@ server <- function(input, output, session) {
   observe({
     region <- input$parGlobal_region
     if (!is.null(region) && region != "") {
-      counties_in_region <- mn_region_raw %>%
-        filter(Region == region) %>%
+      counties_in_region <- mn_region_raw |>
+        filter(Region == region) |>
         pull(County)
       updateSelectInput(session, "parGlobal_county", choices = sort(unique(counties_in_region)))
     } else {
@@ -337,14 +337,14 @@ server <- function(input, output, session) {
   
   # Render narrative for the selected region
   output$region_narrative <- renderUI({
-    filtered_region <- mn_region_raw %>% filter(County == input$parGlobal_county)
+    filtered_region <- mn_region_raw |> filter(County == input$parGlobal_county)
     region_vector <- unique(filtered_region$Region)
     HTML(paste0("<b>", region_vector, " Region</b> is made up of the following counties: ", paste(unique(filtered_region$County), collapse = ", "), "."))
   })
   
   # Render narrative for the selected CHB
   output$chb_narrative_01 <- renderUI({
-    filtered_chb <- chb_raw %>% filter(County == input$parGlobal_county)
+    filtered_chb <- chb_raw |> filter(County == input$parGlobal_county)
     chb_name_vector <- unique(filtered_chb$CHBName)
     HTML(paste0("<b>", chb_name_vector, " Community Health Board</b> includes: ", paste(unique(filtered_chb$County), collapse = ", "), "."))
   })
@@ -357,12 +357,12 @@ server <- function(input, output, session) {
   # Render counties in the selected region with highlighting
   output$region_counties <- renderUI({
     selected_county <- input$parGlobal_county
-    regions <- mn_region_raw %>%
-      group_by(Region) %>%
+    regions <- mn_region_raw |>
+      group_by(Region) |>
       summarise(Counties = paste(County, collapse = ", "))
     
-    regions_text <- regions %>%
-      mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) %>%
+    regions_text <- regions |>
+      mutate(Text = paste0("<b>", Region, " Region::</b> ", Counties)) |>
       pull(Text)
     
     regions_text <- sapply(regions_text, highlight_text, keyword = selected_county)
@@ -372,12 +372,12 @@ server <- function(input, output, session) {
   # Render counties in the selected CHB with highlighting
   output$chb_counties <- renderUI({
     selected_county <- input$parGlobal_county
-    chbs <- chb_raw %>%
-      group_by(CHB) %>%
+    chbs <- chb_raw |>
+      group_by(CHB) |>
       summarise(Counties = paste(County, collapse = ", "))
     
-    chb_text <- chbs %>%
-      mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) %>%
+    chb_text <- chbs |>
+      mutate(Text = paste0("<b>", CHB, "::</b> ", Counties)) |>
       pull(Text)
     
     chb_text <- sapply(chb_text, highlight_text, keyword = selected_county)
@@ -390,7 +390,7 @@ server <- function(input, output, session) {
   })
   
   output$selected_region_title <- renderText({
-    county_region <- mn_region_raw %>% filter(County == input$parGlobal_county) %>% pull(Region) %>% unique()
+    county_region <- mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region) |> unique()
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_region, "Region"))
   })
   
@@ -399,55 +399,55 @@ server <- function(input, output, session) {
   })
   
   output$selected_chb_title <- renderText({
-    county_chb <- chb_raw %>% filter(County == input$parGlobal_county) %>% pull(CHB) %>% unique()
+    county_chb <- chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB) |> unique()
     HTML(paste("Coronary Heart Disease Exposure", "<br/>", county_chb, "CHB"))
   })
   
   # Reactive Data for plotting ------------------------------------------------
   # Define reactive data for the selected county
   reactive_county_data <- reactive({
-    PopEst_CHDMN %>%
-      filter(CTYNAME == input$parGlobal_county) %>%
-      aggregate_values(input$parGlobal_county, "CTYNAME") %>%
-      select(-CTYNAME) %>%
+    PopEst_CHDMN |>
+      filter(CTYNAME == input$parGlobal_county) |>
+      aggregate_values(input$parGlobal_county, "CTYNAME") |>
+      select(-CTYNAME) |>
       rename(
         `Data Type` = Data_Value_Type,
         `Point Estimate` = Aggregate_Data_Value,
         `Low Confidence Limit` = Aggregate_Low_Confidence_Limit,
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
-      ) %>%
+      ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
   
   # Define reactive data for the selected region
   reactive_region_data <- reactive({
-    county_region <- mn_region_raw %>% filter(County == input$parGlobal_county) %>% pull(Region) %>% unique()
-    PopEst_CHDMN %>%
-      filter(Region %in% county_region) %>%
-      aggregate_values(county_region, 'Region') %>%
-      select(-Region) %>%
+    county_region <- mn_region_raw |> filter(County == input$parGlobal_county) |> pull(Region) |> unique()
+    PopEst_CHDMN |>
+      filter(Region %in% county_region) |>
+      aggregate_values(county_region, 'Region') |>
+      select(-Region) |>
       rename(
         `Data Type` = Data_Value_Type,
         `Point Estimate` = Aggregate_Data_Value,
         `Low Confidence Limit` = Aggregate_Low_Confidence_Limit,
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
-      ) %>%
+      ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
   
   # Define reactive data for the selected CHB
   reactive_chb_data <- reactive({
-    county_chb <- chb_raw %>% filter(County == input$parGlobal_county) %>% pull(CHB) %>% unique()
-    PopEst_CHDMN %>%
-      filter(CHB %in% county_chb) %>%
-      aggregate_values(county_chb, 'CHB') %>%
-      select(-CHB) %>%
+    county_chb <- chb_raw |> filter(County == input$parGlobal_county) |> pull(CHB) |> unique()
+    PopEst_CHDMN |>
+      filter(CHB %in% county_chb) |>
+      aggregate_values(county_chb, 'CHB') |>
+      select(-CHB) |>
       rename(
         `Data Type` = Data_Value_Type,
         `Point Estimate` = Aggregate_Data_Value,
         `Low Confidence Limit` = Aggregate_Low_Confidence_Limit,
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
-      ) %>%
+      ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
   
@@ -457,7 +457,7 @@ server <- function(input, output, session) {
       reactive_county_data(),
       reactive_region_data(),
       reactive_chb_data(),
-      mn_total %>%
+      mn_total |>
         rename(
           `Data Type` = Data_Value_Type,
           `Point Estimate` = Aggregate_Data_Value,
@@ -485,13 +485,13 @@ server <- function(input, output, session) {
   
   # Render plot for the state of Minnesota
   output$plot_state <- renderPlot({
-    data <- mn_total %>%
+    data <- mn_total |>
       rename(
         `Data Type` = Data_Value_Type,
         `Point Estimate` = Aggregate_Data_Value,
         `Low Confidence Limit` = Aggregate_Low_Confidence_Limit,
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
-      ) %>%
+      ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
     chd_plot(data, y_axis_limits())
   })
@@ -514,13 +514,13 @@ server <- function(input, output, session) {
   
   # Render summary table for the state of Minnesota
   output$table_state <- renderTable({
-    mn_total %>%
+    mn_total |>
       rename(
         `Data Type` = Data_Value_Type,
         `Point Estimate` = Aggregate_Data_Value,
         `Low Confidence Limit` = Aggregate_Low_Confidence_Limit,
         `High Confidence Limit` = Aggregate_High_Confidence_Limit
-      ) %>%
+      ) |>
       select(`Data Type`, `Low Confidence Limit`, `Point Estimate`, `High Confidence Limit`)
   })
   
@@ -528,7 +528,7 @@ server <- function(input, output, session) {
   # Render narrative text based on selected inputs
   output$narrative_text <- renderUI({
     county_data <- reactive_county_data()
-    state_data <- mn_total %>%
+    state_data <- mn_total |>
       rename(
         `Data Type` = Data_Value_Type,
         `Point Estimate` = Aggregate_Data_Value,
@@ -596,14 +596,14 @@ server <- function(input, output, session) {
     mn_map_data <- map_data("county", region = "minnesota")
     mn_map_data$subregion <- toupper(mn_map_data$subregion)
     
-    selected_county_data <- mn_map_data %>%
+    selected_county_data <- mn_map_data |>
       filter(subregion == toupper(selected_county))
     
-    county_region <- mn_region_raw %>%
-      filter(County == selected_county) %>%
+    county_region <- mn_region_raw |>
+      filter(County == selected_county) |>
       pull(Region)
-    county_chb <- chb_raw %>%
-      filter(County == selected_county) %>%
+    county_chb <- chb_raw |>
+      filter(County == selected_county) |>
       pull(CHB)
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
@@ -613,8 +613,8 @@ server <- function(input, output, session) {
       theme_void() +
       theme(legend.position = "none")
     
-    ggplotly(plot) %>%
-      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) %>%
+    ggplotly(plot) |>
+      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
       style(
         hoverinfo = "text",
         text = paste(
@@ -635,18 +635,18 @@ server <- function(input, output, session) {
     mn_map_data <- map_data("county", region = "minnesota")
     mn_map_data$subregion <- toupper(mn_map_data$subregion)
     
-    mn_map_data <- mn_map_data %>%
+    mn_map_data <- mn_map_data |>
       left_join(mn_region_raw, by = c("subregion" = "County"))
     
-    counties_in_region <- mn_region_raw %>%
-      filter(Region == selected_region) %>%
-      pull(County) %>%
+    counties_in_region <- mn_region_raw |>
+      filter(Region == selected_region) |>
+      pull(County) |>
       toupper()
     
-    region_map_data <- mn_map_data %>%
+    region_map_data <- mn_map_data |>
       filter(subregion %in% counties_in_region)
     
-    selected_county_data <- mn_map_data %>%
+    selected_county_data <- mn_map_data |>
       filter(subregion == toupper(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
@@ -657,8 +657,8 @@ server <- function(input, output, session) {
       theme_void() +
       theme(legend.position = "none")
     
-    ggplotly(plot) %>%
-      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) %>%
+    ggplotly(plot) |>
+      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
       style(
         hoverinfo = "text",
         text = ~paste(
@@ -677,22 +677,22 @@ server <- function(input, output, session) {
     mn_map_data <- map_data("county", region = "minnesota")
     mn_map_data$subregion <- toupper(mn_map_data$subregion)
     
-    mn_map_data <- mn_map_data %>%
+    mn_map_data <- mn_map_data |>
       left_join(chb_raw, by = c("subregion" = "County"))
     
-    county_chb <- chb_raw %>%
-      filter(County == selected_county) %>%
+    county_chb <- chb_raw |>
+      filter(County == selected_county) |>
       pull(CHB)
     
-    counties_in_chb <- chb_raw %>%
-      filter(CHB == county_chb) %>%
-      pull(County) %>%
+    counties_in_chb <- chb_raw |>
+      filter(CHB == county_chb) |>
+      pull(County) |>
       toupper()
     
-    chb_map_data <- mn_map_data %>%
+    chb_map_data <- mn_map_data |>
       filter(subregion %in% counties_in_chb)
     
-    selected_county_data <- mn_map_data %>%
+    selected_county_data <- mn_map_data |>
       filter(subregion == toupper(selected_county))
     
     plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
@@ -703,8 +703,8 @@ server <- function(input, output, session) {
       theme_void() +
       theme(legend.position = "none")
     
-    ggplotly(plot) %>%
-      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) %>%
+    ggplotly(plot) |>
+      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
       style(
         hoverinfo = "text",
         text = ~paste(
@@ -720,10 +720,10 @@ server <- function(input, output, session) {
   output$mn_adults_chd_exposure_map <- renderPlotly({
     selected_prevalence <- input$parLocal_prevalence
     
-    exposure_data <- Selected_Locations %>%
-      filter(Data_Value_Type == selected_prevalence) %>%
-      mutate(LocationName = ifelse(LocationName == "ST. LOUIS", "ST LOUIS", LocationName)) %>%
-      select(LocationName, Data_Value, Region, CHB, Low_Confidence_Limit, High_Confidence_Limit) %>%
+    exposure_data <- Selected_Locations |>
+      filter(Data_Value_Type == selected_prevalence) |>
+      mutate(LocationName = ifelse(LocationName == "ST. LOUIS", "ST LOUIS", LocationName)) |>
+      select(LocationName, Data_Value, Region, CHB, Low_Confidence_Limit, High_Confidence_Limit) |>
       mutate(
         is_hotspot = ifelse(Data_Value < 0.74 | Data_Value < 7.4, "No (Prevalence < 7.4%)", "Yes (Prevalence > 7.3%)"),
         LocationName = toupper(LocationName)
@@ -732,7 +732,7 @@ server <- function(input, output, session) {
     mn_map_data <- map_data("county", region = "minnesota")
     mn_map_data$subregion <- toupper(mn_map_data$subregion)
     
-    map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "LocationName", all.x = TRUE) %>% 
+    map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "LocationName", all.x = TRUE) |> 
       arrange(order)
     
     plot <- ggplot(map_data, aes(x = long, y = lat, group = group, fill = Data_Value, text = paste(
@@ -750,7 +750,7 @@ server <- function(input, output, session) {
       theme(legend.position = "right") +
       labs(fill = paste(selected_prevalence, "(%)"))
     
-    ggplotly(plot, tooltip = "text") %>%
+    ggplotly(plot, tooltip = "text") |>
       layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black")))
   })
   
