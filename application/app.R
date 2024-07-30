@@ -724,24 +724,28 @@ server <- function(input, output, session) {
       filter(Data_Value_Type == selected_prevalence) |>
       mutate(LocationName = ifelse(LocationName == "ST. LOUIS", "ST LOUIS", LocationName)) |>
       select(LocationName, Data_Value, Region, CHB, Low_Confidence_Limit, High_Confidence_Limit) |>
+      rename(`County` = LocationName,
+             `Point Estimate` = Data_Value,
+             `Low Confidence Limit` = Low_Confidence_Limit,
+             `High Confidence Limit` = High_Confidence_Limit) |> 
       mutate(
-        is_hotspot = ifelse(Data_Value < 0.74 | Data_Value < 7.4, "No (Prevalence < 7.4%)", "Yes (Prevalence > 7.3%)"),
-        LocationName = toupper(LocationName)
+        is_hotspot = ifelse(`Point Estimate` < 0.74 | `Point Estimate` < 7.4, "No (Prevalence < 7.4%)", "Yes (Prevalence > 7.3%)"),
+        `County` = toupper(`County`)
       )
     
     mn_map_data <- map_data("county", region = "minnesota")
     mn_map_data$subregion <- toupper(mn_map_data$subregion)
     
-    map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "LocationName", all.x = TRUE) |> 
+    map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "County", all.x = TRUE) |> 
       arrange(order)
     
-    plot <- ggplot(map_data, aes(x = long, y = lat, group = group, fill = Data_Value, text = paste(
+    plot <- ggplot(map_data, aes(x = long, y = lat, group = group, fill = `Point Estimate`, text = paste(
       "State: Minnesota",
       "<br>Region:", Region,
       "<br>CHB:", CHB,
       "<br>County:", subregion,
-      "<br>", selected_prevalence, ":", round(Data_Value, 2), "%",
-      "<br>95% CI:", round(Low_Confidence_Limit, 2), "-", round(High_Confidence_Limit, 2),
+      "<br>", selected_prevalence, ":", round(`Point Estimate`, 2), "%",
+      "<br>95% CI:", round(`Low Confidence Limit`, 2), "-", round(`High Confidence Limit`, 2),
       "<br>Hotspot:", is_hotspot
     ))) +
       geom_polygon(color = "black") +
@@ -755,10 +759,13 @@ server <- function(input, output, session) {
   })
   
   # Bookmarking -----------------------------------------------------------------
+  # the next 8 lines are from https://mastering-shiny.org/action-bookmark.html as well as enableBookmarking in the shinyApp function
+  # Automatically bookmark every time an input changes
   observe({
     reactiveValuesToList(input)
     session$doBookmark()
   })
+  # Update the query string
   onBookmarked(updateQueryString)
 }
 
