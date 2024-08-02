@@ -113,7 +113,8 @@ chd_plot <- function(data, y_limits) {
       axis.title.x = element_blank(),
       axis.line = element_blank(),
       legend.text = element_text(size = 12)
-    )
+    ) +
+    scale_color_manual(values = c("Age-adjusted prevalence" = "#78BE21", "Crude prevalence" = "#003865"))
 }
 
 # Function to generate narrative text -----------------------------------------
@@ -132,12 +133,41 @@ generate_narrative <- function(county_data, comparison_data, comparison_name, hi
       narrative <- paste0(narrative, " The confidence limits (low & high) values is <b>lower</b> than the ", comparison_name, ".")
     } else {
       narrative <- paste0(narrative, " The confidence limits values <b>higher</b> than the ", comparison_name, ".")
-    } 
+    }
   } else {
     narrative <- paste0(narrative, " The difference in the CI values is <b>not statistically significant</b>.")
   }
   
   narrative
+}
+
+# Function to prepare map data ------------------------------------------------
+prepare_map_data <- function(map_data, merge_data, merge_by, highlight_criteria = NULL) {
+  map_data <- map_data |>
+    left_join(merge_data, by = merge_by) |>
+    mutate(across(where(is.factor), as.character))  # Convert factors to character
+  
+  if (!is.null(highlight_criteria)) {
+    map_data <- map_data |>
+      filter(!!sym(highlight_criteria) %in% merge_data[[highlight_criteria]])
+  }
+  
+  map_data
+}
+
+# Function to create maps with hover info -------------------------------------
+# This function creates an interactive plotly map for a given dataset and highlight criteria
+create_plotly_map <- function(map_data, highlight_data) {
+  plot <- ggplot(map_data, aes(x = long, y = lat, group = group, text = subregion)) +
+    geom_polygon(aes(fill = "unhighlighted"), color = "white") +
+    geom_polygon(data = highlight_data, aes(fill = "highlighted"), color = "white") +
+    scale_fill_manual(values = c(unhighlighted = "#78BE21", highlighted = "#003865"), guide = "none") +
+    coord_fixed(1.3) +
+    theme_void()
+  
+  # Call ggplotly on the plot object and remove legend
+  ggplotly(plot, tooltip = "text") |>
+    layout(showlegend = FALSE)
 }
 
 # Define UI -------------------------------------------------------------------
@@ -148,9 +178,10 @@ ui <- function(request) {
     dashboardSidebar(
       width = 350,
       selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Dropdown for selecting SCHSAC region
+      selectInput("parGlobal_chb", label = "Select Community Health Board", choices = sort(unique(chb_raw$CHB)), selected = NULL, width = 350), # Dropdown for selecting Community Health Board
       selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
       selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
-      selectInput("par_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting year
+      selectInput("parGlobal_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting year
       sidebarMenu(
         menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
         menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"),
@@ -186,10 +217,10 @@ ui <- function(request) {
               "Region/CHB",
               fluidRow(
                 column(
-                  width = 12,
-                  h3(HTML("Updating the Select County of Interest filter will highlight the county in <font color=red>red</font> while the Regions and Community Health Boards will remain in <b>bold</b>.")), # Explanation of functionality
-                  h3("For this tab, the Select SCHSAC Region and Select Community Health Board filters are greyed out because they do not execute any function on this tab."), # Note on disabled filters
-                  h3("The purpose for this tab is to provide a quick reference for what counties fall under which region and Community Health Board.") # Purpose of the tab
+                  width = 11,
+                  h3(HTML("Updating the Select SCHSAC Region of Interest filter will highlight all of the counties in the selected SCHSAC region in <font color=blue>blue</font> on the <b>Minnesota Region Map.</b>")), # Explanation of functionality
+                  h3(HTML("Updating the Select Community Health Board filter will highlight all of the counties in the selected CHB in <font color=blue>blue</font> on the <b>Minnesota CHB Map.</b>")), # Explanation of functionality
+                  h3(HTML("Updating the Select County of Interest filter will highlight the selected county in <font color=blue>blue</font> on the <b>Minnesota County Map.</b>")) # Explanation of functionality
                 )
               ),
               fluidRow(
@@ -201,7 +232,7 @@ ui <- function(request) {
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_region_map", height = "400px")
+                    plotlyOutput("mn_region_map", height = "400px")  # Use plotlyOutput for interactive map
                   )
                 ),
                 column(
@@ -223,7 +254,7 @@ ui <- function(request) {
                     solidHeader = TRUE,
                     collapsible = TRUE,
                     width = NULL,
-                    plotlyOutput("mn_map", height = "400px")
+                    plotlyOutput("mn_county_map", height = "400px")  # Changed to plotlyOutput
                   )
                 )
               )
@@ -322,6 +353,77 @@ ui <- function(request) {
 # Server Logic ----------------------------------------------------------------
 # Define the server logic for the Shiny dashboard
 server <- function(input, output, session) {
+  
+  # Reactive data for the region map based on user selection
+  reactive_region_map_data <- reactive({
+    selected_region <- input$parGlobal_region
+    
+    # Prepare map data
+    mn_map_data <- map_data("county", region = "minnesota")
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
+    
+    # Prepare data to highlight the selected region
+    mn_map_data <- prepare_map_data(mn_map_data, mn_region_raw, c("subregion" = "County"))
+    
+    counties_in_region <- mn_region_raw |>
+      filter(Region == selected_region) |>
+      pull(County)
+    counties_in_region <- map_chr(counties_in_region, standardize_county_names)
+    
+    list(map_data = mn_map_data, highlight_data = mn_map_data |> filter(subregion %in% counties_in_region))
+  })
+  
+  # Reactive data for the CHB map based on user selection
+  reactive_chb_map_data <- reactive({
+    selected_chb <- input$parGlobal_chb
+    
+    # Prepare map data
+    mn_map_data <- map_data("county", region = "minnesota")
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
+    
+    # Prepare data to highlight the selected CHB
+    mn_map_data <- prepare_map_data(mn_map_data, chb_raw, c("subregion" = "County"))
+    
+    counties_in_chb <- chb_raw |>
+      filter(CHB == selected_chb) |>
+      pull(County)
+    counties_in_chb <- map_chr(counties_in_chb, standardize_county_names)
+    
+    list(map_data = mn_map_data, highlight_data = mn_map_data |> filter(subregion %in% counties_in_chb))
+  })
+  
+  # Reactive data for the county map based on user selection
+  reactive_county_map_data <- reactive({
+    selected_county <- input$parGlobal_county
+    
+    # Prepare map data
+    mn_map_data <- map_data("county", region = "minnesota")
+    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
+    
+    selected_county_data <- mn_map_data |>
+      filter(subregion == standardize_county_names(selected_county))
+    
+    list(map_data = mn_map_data, highlight_data = selected_county_data)
+  })
+  
+  # Render the Minnesota Region Map with hover info
+  output$mn_region_map <- renderPlotly({
+    map_data <- reactive_region_map_data()
+    create_plotly_map(map_data$map_data, map_data$highlight_data)
+  })
+  
+  # Render the Minnesota CHB Map with hover info
+  output$mn_chb_map <- renderPlotly({
+    map_data <- reactive_chb_map_data()
+    create_plotly_map(map_data$map_data, map_data$highlight_data)
+  })
+  
+  # Render the Minnesota County Map with hover info
+  output$mn_county_map <- renderPlotly({
+    map_data <- reactive_county_map_data()
+    create_plotly_map(map_data$map_data, map_data$highlight_data)
+  })
+  
   # Observe the selected region and update county choices accordingly
   observe({
     region <- input$parGlobal_region
@@ -335,9 +437,17 @@ server <- function(input, output, session) {
     }
   })
   
-  # Update CHB choices based on selected county
+  # Observe the selected CHB and update county choices accordingly
   observe({
-    updateSelectInput(session, "parGlobal_chb", choices = unique(chb_raw$CHBName))
+    chb <- input$parGlobal_chb
+    if (!is.null(chb) && chb != "") {
+      counties_in_chb <- chb_raw |>
+        filter(CHB == chb) |>
+        pull(County)
+      updateSelectInput(session, "parGlobal_county", choices = sort(unique(counties_in_chb)))
+    } else {
+      updateSelectInput(session, "parGlobal_county", choices = sort(unique(chb_raw$County)))
+    }
   })
   
   # Render narrative for the selected region
@@ -545,7 +655,7 @@ server <- function(input, output, session) {
     chb_data <- reactive_chb_data()
     
     county <- input$parGlobal_county
-    comparison <- input$par_chdStateRegionChb
+    comparison <- input$parGlobal_chdStateRegionChb
     year <- "2021"
     highlighted_year <- highlight_text(year, year)
     highlighted_county <- highlight_text(county, county)
@@ -593,125 +703,7 @@ server <- function(input, output, session) {
     HTML(paste(age_adjusted_narrative, "<br><br>", crude_prevalence_narrative))
   })
   
-  # Render Plotly Map ---------------------------------------------------------
-  # Render plotly map for the state of Minnesota highlighting selected county
-  output$mn_map <- renderPlotly({
-    selected_county <- input$parGlobal_county
-    
-    mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
-    
-    selected_county_data <- mn_map_data |>
-      filter(subregion == standardize_county_names(selected_county))
-    
-    county_region <- mn_region_raw |> filter(County == selected_county) |> pull(Region)
-    county_chb <- chb_raw |> filter(County == selected_county) |> pull(CHB)
-    
-    plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
-      geom_polygon(fill = "#78BE21", color = "white") +
-      geom_polygon(data = selected_county_data, fill = "#003865", color = "white") +
-      coord_fixed(1.3) +
-      theme_void() +
-      theme(legend.position = "none")
-    
-    ggplotly(plot) |>
-      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
-      style(
-        hoverinfo = "text",
-        text = paste(
-          "State: Minnesota",
-          "<br>Region:", county_region,
-          "<br>CHB:", county_chb,
-          "<br>County:", selected_county
-        ),
-        hoveron = "fills"
-      )
-  })
-  
-  # Render Plotly Region Map ---------------------------------------------------------
-  output$mn_region_map <- renderPlotly({
-    selected_county <- input$parGlobal_county
-    selected_region <- input$parGlobal_region
-    
-    mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
-    
-    mn_map_data <- mn_map_data |>
-      left_join(mn_region_raw, by = c("subregion" = "County"))
-    
-    counties_in_region <- mn_region_raw |>
-      filter(Region == selected_region) |>
-      pull(County)
-    counties_in_region <- map_chr(counties_in_region, standardize_county_names)
-    
-    region_map_data <- mn_map_data |>
-      filter(subregion %in% counties_in_region)
-    
-    selected_county_data <- mn_map_data |>
-      filter(subregion == standardize_county_names(selected_county))
-    
-    plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
-      geom_polygon(fill = "#78BE21", color = "white") +
-      geom_polygon(data = region_map_data, fill = "blue", color = "white") +
-      geom_polygon(data = selected_county_data, fill = "#003865", color = "white") +
-      coord_fixed(1.3) +
-      theme_void() +
-      theme(legend.position = "none")
-    
-    ggplotly(plot) |>
-      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
-      style(
-        hoverinfo = "text",
-        text = ~paste(
-          "State: Minnesota",
-          "<br>Region:", selected_region,
-          "<br>County:", subregion
-        ),
-        hoveron = "fills"
-      )
-  })
-  
-  # Render Plotly CHB Map ---------------------------------------------------------
-  output$mn_chb_map <- renderPlotly({
-    selected_county <- input$parGlobal_county
-    
-    mn_map_data <- map_data("county", region = "minnesota")
-    mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
-    
-    mn_map_data <- mn_map_data |>
-      left_join(chb_raw, by = c("subregion" = "County"))
-    
-    county_chb <- chb_raw |> filter(County == selected_county) |> pull(CHB)
-    
-    counties_in_chb <- chb_raw |> filter(CHB == county_chb) |> pull(County)
-    counties_in_chb <- map_chr(counties_in_chb, standardize_county_names)
-    
-    chb_map_data <- mn_map_data |> filter(subregion %in% counties_in_chb)
-    
-    selected_county_data <- mn_map_data |> filter(subregion == standardize_county_names(selected_county))
-    
-    plot <- ggplot(mn_map_data, aes(x = long, y = lat, group = group)) +
-      geom_polygon(fill = "#78BE21", color = "white") +
-      geom_polygon(data = chb_map_data, aes(fill = subregion), color = "white") +
-      geom_polygon(data = selected_county_data, fill = "#003865", color = "white") +
-      coord_fixed(1.3) +
-      theme_void() +
-      theme(legend.position = "none")
-    
-    ggplotly(plot) |>
-      layout(hoverlabel = list(bgcolor = "white", bordercolor = "black", font = list(color = "black"))) |>
-      style(
-        hoverinfo = "text",
-        text = ~paste(
-          "State: Minnesota",
-          "<br>CHB:", county_chb,
-          "<br>County:", subregion
-        ),
-        hoveron = "fills"
-      )
-  })
-  
-  # Render Plotly CHD Exposure Map ---------------------------------------------------------
+  # Render CHD Exposure Map ---------------------------------------------------------
   output$mn_adults_chd_exposure_map <- renderPlotly({
     selected_prevalence <- input$parLocal_prevalence
     
@@ -719,19 +711,16 @@ server <- function(input, output, session) {
       filter(Data_Value_Type == selected_prevalence) |>
       mutate(LocationName = ifelse(LocationName == "St. Louis", "St Louis", LocationName)) |>
       select(LocationName, Data_Value, Region, CHB, Low_Confidence_Limit, High_Confidence_Limit) |>
-      rename(`County` = LocationName,
+      rename(County = LocationName,
              `Point Estimate` = Data_Value,
              `Low Confidence Limit` = Low_Confidence_Limit,
-             `High Confidence Limit` = High_Confidence_Limit) |> 
-      mutate(
-        is_hotspot = ifelse(`Point Estimate` < 0.74 | `Point Estimate` < 7.4, "No, (Prevalence < 7.4%)", "Yes, (Prevalence > 7.3%)"),
-        `County` = standardize_county_names(`County`)
-      )
+             `High Confidence Limit` = High_Confidence_Limit) |>
+      mutate(County = standardize_county_names(County))
     
     mn_map_data <- map_data("county", region = "minnesota")
     mn_map_data$subregion <- standardize_county_names(mn_map_data$subregion)
     
-    map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "County", all.x = TRUE) |> 
+    map_data <- merge(mn_map_data, exposure_data, by.x = "subregion", by.y = "County", all.x = TRUE) |>
       arrange(order)
     
     plot <- ggplot(map_data, aes(x = long, y = lat, group = group, fill = `Point Estimate`, text = paste(
@@ -740,8 +729,7 @@ server <- function(input, output, session) {
       "<br>CHB:", CHB,
       "<br>County:", subregion,
       "<br>", selected_prevalence, ":", round(`Point Estimate`, 2), "%",
-      "<br>95% CI:", round(`Low Confidence Limit`, 2), "-", round(`High Confidence Limit`, 2),
-      "<br>Hotspot:", is_hotspot
+      "<br>95% CI:", round(`Low Confidence Limit`, 2), "-", round(`High Confidence Limit`, 2)
     ))) +
       geom_polygon(color = "black") +
       scale_fill_gradient(low = "#78BE21", high = "#003865", na.value = "grey50") +
@@ -765,4 +753,4 @@ server <- function(input, output, session) {
 }
 
 # Create Shiny app
-shinyApp(ui = ui, server = server) # Run the Shiny application 
+shinyApp(ui = ui, server = server) # Run the Shiny application
