@@ -218,8 +218,8 @@ ui <- function(request) {
               fluidRow(
                 column(
                   width = 11,
-                  h3(HTML("Updating the Select SCHSAC Region of Interest filter will highlight all of the counties in the selected SCHSAC region in <font color=blue>blue</font> on the <b>Minnesota Region Map.</b>")), # Explanation of functionality
-                  h3(HTML("Updating the Select Community Health Board filter will highlight all of the counties in the selected CHB in <font color=blue>blue</font> on the <b>Minnesota CHB Map.</b>")), # Explanation of functionality
+                  h3(HTML("Updating the Select State Community Health Services Advisory Committee (SCHSAC) Region of Interest filter will highlight all of the counties in the selected SCHSAC region in <font color=blue>blue</font> on the <b>Minnesota Region Map.</b>")), # Explanation of functionality
+                  h3(HTML("Updating the Select Community Health Board (CHB) filter will highlight all of the counties in the selected CHB in <font color=blue>blue</font> on the <b>Minnesota CHB Map.</b>")), # Explanation of functionality
                   h3(HTML("Updating the Select County of Interest filter will highlight the selected county in <font color=blue>blue</font> on the <b>Minnesota County Map.</b>")) # Explanation of functionality
                 )
               ),
