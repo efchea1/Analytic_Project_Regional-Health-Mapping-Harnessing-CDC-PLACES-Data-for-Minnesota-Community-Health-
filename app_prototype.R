@@ -155,7 +155,7 @@ prepare_map_data <- function(map_data, merge_data, merge_by, highlight_criteria 
   map_data
 }
 
-# Function to create maps with hover info -------------------------------------
+# Function to create maps with hover info with county name -----------
 # This function creates an interactive plotly map for a given dataset and highlight criteria
 create_plotly_map <- function(map_data, highlight_data) {
   plot <- ggplot(map_data, aes(x = long, y = lat, group = group, text = subregion)) +
@@ -177,11 +177,11 @@ ui <- function(request) {
     dashboardHeader(title = "CDC Places to MN Regions", titleWidth = 400), # Create dashboard header with title
     dashboardSidebar(
       width = 350,
-      selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = NULL, width = 350), # Dropdown for selecting SCHSAC region
-      selectInput("parGlobal_chb", label = "Select Community Health Board", choices = sort(unique(chb_raw$CHB)), selected = NULL, width = 350), # Dropdown for selecting Community Health Board
-      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
+      selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = "Northwest (NW)", width = 350), # Dropdown for selecting SCHSAC region
+      selectInput("parGlobal_chb", label = "Select Community Health Board", choices = sort(unique(chb_raw$CHB)), selected = "(NW) Quin County", width = 350), # Dropdown for selecting Community Health Board
+      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = "Kittson", width = 350), # Dropdown for selecting county
       selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
-      selectInput("parGlobal_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting year
+      selectInput("parGlobal_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting Comparison (State, Region, & CHB)
       sidebarMenu(
         menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
         menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"),
