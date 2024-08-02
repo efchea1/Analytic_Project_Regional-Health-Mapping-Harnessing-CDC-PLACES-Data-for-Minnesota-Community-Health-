@@ -165,7 +165,7 @@ create_plotly_map <- function(map_data, highlight_data) {
     coord_fixed(1.3) +
     theme_void()
   
-  # Call ggplotly on the plot object and remove legend
+  # Call ggplotly on the plot object and remove legend from the Minnesota Region Map, Minnesota CHB Map, and Minnesota County Map
   ggplotly(plot, tooltip = "text") |>
     layout(showlegend = FALSE)
 }
