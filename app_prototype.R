@@ -179,12 +179,11 @@ ui <- function(request) {
       width = 350,
       selectInput("parGlobal_region", label = "Select SCHSAC Region of Interest", choices = sort(unique(mn_region_raw$Region)), selected = "Northwest (NW)", width = 350), # Dropdown for selecting SCHSAC region
       selectInput("parGlobal_chb", label = "Select Community Health Board", choices = sort(unique(chb_raw$CHB)), selected = "(NW) Quin County", width = 350), # Dropdown for selecting Community Health Board
-      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = "Kittson", width = 350), # Dropdown for selecting county
+      selectInput("parGlobal_county", label = "Select County of Interest", choices = sort(unique(mn_region_raw$County)), selected = NULL, width = 350), # Dropdown for selecting county
       selectInput("parGlobal_chdYear", label = "Select Year", choices = sort(unique(Selected_Locations$Year), decreasing = TRUE), selected = max(unique(Selected_Locations$Year)), width = 350), # Dropdown for selecting year
       selectInput("parGlobal_chdStateRegionChb", label = "Select Comparison", choices = c("State", "Region", "CHB"), selected = "State", multiple = FALSE, width = 350), # Dropdown for selecting Comparison (State, Region, & CHB)
       sidebarMenu(
         menuItem("Home", tabName = "tn_homePage"), # Menu item for Home page
-        menuItem("Region & CHB Definition", tabName = "tn_regionChbDefinitions"),
         menuItem("Coronary Heart Disease", tabName = "tn_coronaryHeartDisease")
       )
     ),
@@ -204,17 +203,30 @@ ui <- function(request) {
                   tags$h4(tags$b("Why this project?"), "Before the CDC Places project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC Places counties can view some projected healthcare indicators. However, currently the CDC Places project does not show in an easy format aggregate county regions. By doing this project, I am not only going to help Quin County CHS, but other county regions in the state of Minnesota or even the United States."), # Description of the project
                   tags$h3("Those involved with this project are:"), # Project participants
                   tags$h4(tags$b("Emmanuel Fle Chea"), ", MPH, Public Health Data Science, University of Minnesota School of Public Health"), # Participant 1
-                  tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher") # Participant 2
+                  tags$h4(tags$b("Mr. Patrick Olson"), " (Preceptor), Quin County Community Health Board, Community Resource Liaison/Associate/Researcher"), # Participant 2
+                  tags$h4(tags$b("Lesson Learned:"), style = "font-size: 16px;"),
+                  tags$ul(
+                    tags$li("How to use CDC PLACES methodology to calculate the aggregate values for each health measures in excel spreadsheet. Used this idea and calculated the aggregate values in ShinyLive application and also learned how to put the calculation into a function. I also learned how to use unitesting on each step of the code to make sure that my calculations were correct before building the ShinyLive application.", style = "font-size: 16px;"),
+                    tags$li("How to bookmark specify part of the ShinyLive dashboard using the bookmark function.", style = "font-size: 16px;"),
+                    tags$li("How to navigate challenges of integrating multiple data sources and also the use of collapsible on the plots and maps to allow user to minimize plots and maps.", style = "font-size: 16px;")
+                  ),
+                  tags$h4(tags$b("Limitations:"), style = "font-size: 16px;"),
+                  tags$ul(
+                    tags$li("Fewer Packages: ShinyLive application is in the experimental and developmental stage, not all packages are available in the WebAssembly environment used by ShinyLive.", style = "font-size: 16px;"),
+                    tags$li("Security Concerns: Running code in the browser introduces security risks. Although ShinyLive tries to mitigate these risks, it’s essential to be cautious when handling sensitive data or executing untrusted code.", style = "font-size: 16px;"),
+                    tags$li("Large Download Size: The payload size for the downloaded assets can be significantly larger compared to traditional Shiny deployments. It takes longer time to load a ShinyLive app and get it to run than the original Shiny app.", style = "font-size: 16px;")
+                  ),
+                  tags$h4(tags$b("Struggles:"), style = "font-size: 16px;"),
+                  tags$ul(
+                    tags$li("Continuous troubleshooting of the application.", style = "font-size: 16px;"),
+                    tags$li("My preceptor Mr. Olson had a little experience using functions so I had to self learned functions as I work on the ShinyLive application.", style = "font-size: 16px;"),
+                    tags$li("Technical challenges in deploying the dashboard.", style = "font-size: 16px;")
+                  )
                 )
               )
-            )
-          )
-        ),
-        tabItem(
-          tabName = "tn_regionChbDefinitions",
-          tabsetPanel(
+            ),
             tabPanel(
-              "Region/CHB",
+              "Minnesota, SCHSAC Region, CHB",
               fluidRow(
                 column(
                   width = 11,
@@ -432,21 +444,26 @@ server <- function(input, output, session) {
         filter(Region == region) |>
         pull(County)
       updateSelectInput(session, "parGlobal_county", choices = sort(unique(counties_in_region)))
+      
+      # Update CHB choices based on selected region
+      chbs_in_region <- chb_raw |>
+        filter(County %in% counties_in_region) |>
+        distinct(CHB)
+      updateSelectInput(session, "parGlobal_chb", choices = sort(unique(chbs_in_region$CHB)))
     } else {
       updateSelectInput(session, "parGlobal_county", choices = sort(unique(mn_region_raw$County)))
+      updateSelectInput(session, "parGlobal_chb", choices = sort(unique(chb_raw$CHB)))
     }
   })
   
-  # Observe the selected CHB and update county choices accordingly
-  observe({
+  # Observe the selected CHB and update only the CHB map
+  observeEvent(input$parGlobal_chb, {
     chb <- input$parGlobal_chb
     if (!is.null(chb) && chb != "") {
       counties_in_chb <- chb_raw |>
         filter(CHB == chb) |>
         pull(County)
-      updateSelectInput(session, "parGlobal_county", choices = sort(unique(counties_in_chb)))
-    } else {
-      updateSelectInput(session, "parGlobal_county", choices = sort(unique(chb_raw$County)))
+      # No update to county map or select input to keep them unchanged
     }
   })
   
@@ -724,7 +741,6 @@ server <- function(input, output, session) {
       arrange(order)
     
     plot <- ggplot(map_data, aes(x = long, y = lat, group = group, fill = `Point Estimate`, text = paste(
-      "State: Minnesota",
       "<br>Region:", Region,
       "<br>CHB:", CHB,
       "<br>County:", subregion,
@@ -753,4 +769,4 @@ server <- function(input, output, session) {
 }
 
 # Create Shiny app
-shinyApp(ui = ui, server = server) # Run the Shiny application
+shinyApp(ui = ui, server = server, enableBookmarking = "url") # Run the Shiny application
