@@ -193,6 +193,7 @@ ui <- function(request) {
         tabItem(
           tabName = "tn_homePage",
           tabsetPanel(
+            id = "tpId_home",
             tabPanel(
               "Home Page",
               fluidRow(
