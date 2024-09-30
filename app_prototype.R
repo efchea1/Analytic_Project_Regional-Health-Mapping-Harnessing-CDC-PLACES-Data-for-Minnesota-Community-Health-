@@ -13,22 +13,14 @@ library(purrr)          # purrr for functional programming
 
 # Load Data from GitHub -------------------------------------------------------
 # Read census population estimates data from GitHub
-CensusEstMN <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv')
+CensusEstMN <- read.csv('https://www2.census.gov/programs-surveys/popest/datasets/2020-2023/counties/asrh/cc-est2023-agesex-27.csv')
 
-# List of URLs for CHD (Coronary Heart Disease) data files for multiple years
-CHD_files <- list(
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2018.csv',
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2019.csv',
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2020.csv',
-  'https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2021.csv'
-)
-
-# Load CHD data from the URLs
-CHD_data <- lapply(CHD_files, read.csv)
+# URL for CHD (Coronary Heart Disease) data files for multiple years
+CHD_files <- read.csv('https://data.cdc.gov/resource/7cmc-7y5g.csv?stateabbr=MN')
 
 # Load raw data for Community Health Board (CHB) and MN Region
-chb_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/Community%20Health%20Board%20as%20of%201_17_2024.csv')
-mn_region_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/Public-Data-Sources/main/MN%20SCHSAC%20%26%20CHB%20Regions/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv')
+chb_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/refs/heads/main/MN_Regions/SeparateFiles/MN%20CHB%20as%20of%201_17_2024.csv')
+mn_region_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/refs/heads/main/MN_Regions/SeparateFiles/State%20Community%20Health%20Services%20Advisory%20Committee%20as%20of%201_17_2024.csv')
 
 # Data Wrangling --------------------------------------------------------------
 # Clean and prepare CHD data
