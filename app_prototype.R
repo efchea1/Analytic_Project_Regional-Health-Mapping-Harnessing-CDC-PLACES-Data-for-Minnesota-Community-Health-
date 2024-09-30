@@ -13,10 +13,17 @@ library(purrr)          # purrr for functional programming
 
 # Load Data from GitHub -------------------------------------------------------
 # Read census population estimates data from GitHub
-CensusEstMN <- read.csv('https://www2.census.gov/programs-surveys/popest/datasets/2020-2023/counties/asrh/cc-est2023-agesex-27.csv')
+CensusEstMN <- read.csv('https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/refs/heads/main/CDC%20Places/2020%20to%202022%20Pop.%20Estimates/cc-est2022-agesex.csv')
 
-# URL for CHD (Coronary Heart Disease) data files for multiple years
-CHD_files <- read.csv('https://data.cdc.gov/resource/7cmc-7y5g.csv?stateabbr=MN')
+# List of URLs for CHD (Coronary Heart Disease) data files for multiple years
+CHD_files <- list(
+  'https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2018.csv',
+  'https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2019.csv',
+  'https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2020.csv',
+  'https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/main/CDC%20Places/Places%20CDC%20Estimates/CHD/CHD2021.csv'
+)
+# Load CHD data from the URLs
+CHD_data <- lapply(CHD_files, read.csv)
 
 # Load raw data for Community Health Board (CHB) and MN Region
 chb_raw <- read.csv('https://raw.githubusercontent.com/quincountychsmn/MN_PublicData/refs/heads/main/MN_Regions/SeparateFiles/MN%20CHB%20as%20of%201_17_2024.csv')
