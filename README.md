@@ -43,6 +43,12 @@ Model Evaluation:
 
 If we are close to CDC’s results, we will complete the 1 st part of the project.
 We will proceed to create MN regions for the 2 nd part of the project.
+
+### Technologies Used:
+
+**R Programming:** For data analysis and modeling.
+
+**ShinyLive in R:** To develop interactive dashboards for dynamic data visualization and narrative generation.
 Data Visualization:
 
 
