@@ -6,43 +6,40 @@ Before the CDC PLACES project, the CDC Behavioral Risk Factor Surveillance Syste
 
 CDC_PLACES_MN_Region Quin_County_Community_Health_Services Files associated with the CDC PLACES MN Region analytics project
 
+### Project Overview
 
-Project Overview:
+This project utilizes the CDC PLACES data to develop a comprehensive view of health indicators at the county level in Minnesota, surpassing the limitations of the previous CDC Behavioral Risk Factor Surveillance System (BRFSS) which only allowed state-level projections. Our goal is to create actionable insights for public health interventions and resource allocation across Minnesota counties, including Quin County CHS, enhancing public health response capabilities at a local level.
 
+### Objectives:
 
-Project Name: CDC Places to MN Regions
+**Develop Regional Health Models:** Utilize CDC methodologies to analyze health indicators specific to Minnesota counties.
 
+**Enhance Data Accessibility:** Improve the format and accessibility of health data for easier analysis and application at the county level.
 
-Objective: Use CDC methodology to create MN Regions for a specific health indicator
+### Methodology:
 
-
-Stakeholders: Local public health & Community Health Boards
-Data Collection:
-
-
-Data Sources: Initially, one indicator will be selected from one of the five categories (Health Outcomes, Prevention, Health Risk Behaviors, Health Status, & Disability).
+**Data Sources:** Initially, one indicator will be selected from one of the five categories (Health Outcomes, Prevention, Health Risk Behaviors, Health Status, & Disability).
 PLACES: Local Data for Better Health: Compare Counties | PLACES | CDC
 
+**Data Integration:** Collect data from various CDC PLACES datasets focusing on health outcomes, prevention, behaviors, status, and disabilities.
 
-Data Storage: Once the indicator is selected, data will be stored on GitHub as a CSV so it can be pulled into R without storing it on a local computer.
-Data Preparation:
+**Data Management:** Host all datasets on GitHub in CSV format, enabling seamless integration with data analysis tools like R without the need for local storage.
 
+**Data Cleaning:** Data should be relatively clean (check for duplicates).
 
-Data Cleaning: Data should be relatively clean (check for duplicates).
-Data Exploration: Determine the variables included in CDC’s health care indicator result.
-Feature Engineering: If it is possible to reproduce, CDC’s health care indicator, create MN regions using the second bullet point methodology
+**Data Exploration:** Determine the variables included in CDC’s health care indicator result.
 
+**Statistical Modeling:** Employ statistical models to replicate and validate CDC's health indicators, adapting them to regional specifics of Minnesota.
 
-Using the Data | PLACES: Local Data for Better Health | CDC
-Data Modeling:
+**Feature Engineering:** If it is possible to reproduce, CDC’s health care indicator, create MN regions using the second bullet point methodology.
 
+### Stakeholders: 
 
-Model Selection: Utilize CDC’s methodology for a single county & health care indicator.
-Model Evaluation:
+Local public health & Community Health Boards
 
+**Visualization Tools:** Dashboard will be created with shinyLive in R
 
-If we are close to CDC’s results, we will complete the 1 st part of the project.
-We will proceed to create MN regions for the 2 nd part of the project.
+**Insight Generation:** A dynamic narrative will be created
 
 ### Technologies Used:
 
@@ -50,7 +47,3 @@ We will proceed to create MN regions for the 2 nd part of the project.
 
 **ShinyLive in R:** To develop interactive dashboards for dynamic data visualization and narrative generation.
 Data Visualization:
-
-
-Visualization Tools: Dashboard will be created with shinyLive in R
-Insight Generation: A dynamic narrative will be created
