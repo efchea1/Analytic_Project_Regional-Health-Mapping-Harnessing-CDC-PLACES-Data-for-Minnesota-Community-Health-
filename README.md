@@ -1,4 +1,4 @@
-# analytics_project_cdc_places_mn_region
+# Analytic_Project_Regional Health_Mapping_Harnessing_CDC_PLACES_Data_for_Minnesota_Community_Health_Analysis
 
 
 Before the CDC PLACES project, the CDC Behavioral Risk Factor Surveillance System BRFSS, allowed for state projected healthcare indicators. This process was not able to be applied to the county level. Now, with CDC PLACES counties can view some projected healthcare indicators. However, currently, the CDC PLACES project does not show in an easy format aggregate county regions. By doing this project, I will help Quin County CHS, other county regions in the state of MN, or even the US.
