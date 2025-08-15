@@ -43,13 +43,14 @@ Local public health & Community Health Boards
 
 ### Technologies Used:
 
+**R Programming:** For data analysis and modeling.
+
+**ShinyLive in R:** To develop interactive dashboards for dynamic data visualization and narrative generation.
+Data Visualization:
+
 ## 📄 License
 
 This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
 
 © 2025 Emmanuel Fle Chea. See the LICENSE file for full terms and usage guidelines.
 
-**R Programming:** For data analysis and modeling.
-
-**ShinyLive in R:** To develop interactive dashboards for dynamic data visualization and narrative generation.
-Data Visualization:
